@@ -1,0 +1,39 @@
+## Ignored Visual Studio files
+*.suo
+*.user
+.vs/
+bin/
+obj/
+
+## Ignored Rider files
+.idea/
+
+## Ignored Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+build/
+[Bb]in/
+[Oo]bj/
+
+## Database files
+*.db
+*.db-shm
+*.db-wal
+
+## Environment files
+appsettings.Development.json
+*.env
+
+## Logs
+*.log
+
+## OS files
+.DS_Store
+Thumbs.db
+
+## Node modules (for frontend)
+node_modules/
+dist/
+.vscode/
