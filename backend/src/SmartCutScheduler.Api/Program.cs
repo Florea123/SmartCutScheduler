@@ -1,37 +1,32 @@
-using System.Reflection;
 using System.Text;
-using SmartCutScheduler.Api.Data;
-using SmartCutScheduler.Api.Features.Auth;
-using SmartCutScheduler.Api.Features.Barbers;
-using SmartCutScheduler.Api.Features.Services;
-using SmartCutScheduler.Api.Features.Availability;
-using SmartCutScheduler.Api.Features.Appointments;
-using SmartCutScheduler.Api.Infrastructure.Auth;
-using SmartCutScheduler.Api.Infrastructure.Security;
-using SmartCutScheduler.Api.Infrastructure.Validation;
-using SmartCutScheduler.Api.Validation;
-using FluentValidation;
-using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Scalar.AspNetCore;
+using Microsoft.OpenApi.Models;
+using SmartCutScheduler.Api.Endpoints;
+using SmartCutScheduler.Api.Middleware;
+using SmartCutScheduler.Application;
+using SmartCutScheduler.Domain.Entities;
+using SmartCutScheduler.Domain.Enums;
+using SmartCutScheduler.Infrastructure;
+using SmartCutScheduler.Infrastructure.Auth;
+using SmartCutScheduler.Infrastructure.Persistence;
+using SmartCutScheduler.Infrastructure.Seeding;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add Application & Infrastructure layers
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
+
 // JWT Configuration
-builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 var jwtOpts = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions
 {
     Issuer = "SmartCutScheduler",
     Audience = "SmartCutSchedulerClient",
     SigningKey = builder.Configuration["Jwt:SigningKey"] ?? "SuperSecretKeyForDevelopment12345678901234567890",
 };
-builder.Services.AddSingleton(jwtOpts);
-builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
-builder.Services.AddSingleton<PasswordHasher<SmartCutScheduler.Api.Domain.User>>();
-builder.Services.AddSingleton<IPasswordService, PasswordService>();
 
 // Authentication & Authorization
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -51,26 +46,42 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 
-// OpenAPI (native .NET 10 support)
-builder.Services.AddOpenApi();
+// Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
-
-// MediatR & FluentValidation
-builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
-builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
-builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
-
-// Database Configuration
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
-                       ?? "Host=localhost;Port=5432;Database=smartcutscheduler;Username=postgres;Password=postgres";
-
-// Log connection string for debugging (hide password)
-var maskedConnString = connectionString.Contains("Password=") 
-    ? System.Text.RegularExpressions.Regex.Replace(connectionString, @"Password=[^;]+", "Password=***")
-    : connectionString;
-Console.WriteLine($"🔍 DEBUG: Using connection string: {maskedConnString}");
-
-builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "SmartCutScheduler API",
+        Version = "v1",
+        Description = "API pentru gestionarea programărilor la frizerie - Clean Architecture"
+    });
+    
+    // JWT Bearer Authentication
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+    
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 builder.Services.AddHttpContextAccessor();
 
@@ -102,28 +113,44 @@ app.UseHttpsRedirection();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var hasher = scope.ServiceProvider.GetRequiredService<PasswordHasher<SmartCutScheduler.Api.Domain.User>>();
+    var hasher = scope.ServiceProvider.GetRequiredService<PasswordHasher<User>>();
     
-    // TEMPORARY: Skip migrations due to Npgsql 10.0.0 authentication bug
-    // await db.Database.MigrateAsync();
+    // Create database schema
+    await db.Database.EnsureCreatedAsync();
     
     var adminName = builder.Configuration["SeedAdmin:Name"] ?? "Admin";
     var adminEmail = builder.Configuration["SeedAdmin:Email"] ?? "admin@smartcut.com";
     var adminPassword = builder.Configuration["SeedAdmin:Password"] ?? "Admin123!";
     
-    // Auto-seeding enabled for Docker environment
-    await db.EnsureSeedAdminAsync(adminName, adminEmail, adminPassword, hasher);
-    await SmartCutScheduler.Api.Infrastructure.Seeding.DatabaseSeeder.SeedDemoDataAsync(db);
+    // Seed admin
+    if (!await db.Users.AnyAsync(u => u.Email == adminEmail))
+    {
+        var admin = new User
+        {
+            Id = Guid.NewGuid(),
+            Name = adminName,
+            Email = adminEmail,
+            Role = UserRole.Admin,
+            CreatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow
+        };
+        admin.PasswordHash = hasher.HashPassword(admin, adminPassword);
+        await db.Users.AddAsync(admin);
+        await db.SaveChangesAsync();
+    }
+    
+    await DatabaseSeeder.SeedDemoDataAsync(db);
 }
 
-// OpenAPI + Scalar UI (modern Swagger alternative)
+// Swagger UI
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
-    app.MapScalarApiReference(options =>
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
     {
-        options.Title = "SmartCutScheduler API";
-        options.Theme = ScalarTheme.Purple;
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "SmartCutScheduler API v1");
+        c.RoutePrefix = "swagger";
+        c.DocumentTitle = "SmartCutScheduler API Documentation";
     });
 }
 
