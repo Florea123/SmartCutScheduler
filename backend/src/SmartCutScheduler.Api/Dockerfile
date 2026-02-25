@@ -1,12 +1,20 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-# Copy csproj and restore dependencies
-COPY SmartCutScheduler.Api.csproj .
-RUN dotnet restore
+# Copy solution and project files
+COPY ["SmartCutScheduler.Api/SmartCutScheduler.Api.csproj", "SmartCutScheduler.Api/"]
+COPY ["SmartCutScheduler.Application/SmartCutScheduler.Application.csproj", "SmartCutScheduler.Application/"]
+COPY ["SmartCutScheduler.Domain/SmartCutScheduler.Domain.csproj", "SmartCutScheduler.Domain/"]
+COPY ["SmartCutScheduler.Infrastructure/SmartCutScheduler.Infrastructure.csproj", "SmartCutScheduler.Infrastructure/"]
 
-# Copy everything else and build
+# Restore dependencies
+RUN dotnet restore "SmartCutScheduler.Api/SmartCutScheduler.Api.csproj"
+
+# Copy all source code
 COPY . .
+
+# Build and publish
+WORKDIR "/src/SmartCutScheduler.Api"
 RUN dotnet publish -c Release -o /app/publish
 
 # Build runtime image
