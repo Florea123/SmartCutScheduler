@@ -1,0 +1,311 @@
+@page "/barber-services"
+@using SmartCutScheduler.Web.Services
+@using Microsoft.AspNetCore.Authorization
+@inject IBarberServiceService BarberServiceService
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "Barber")]
+
+<PageTitle>Serviciile Mele</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Gestionare Servicii</MudText>
+
+    <MudGrid>
+        <!-- Serviciile Mele -->
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Serviciile Mele</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (_loadingMyServices)
+                    {
+                        <MudProgressCircular Indeterminate="true" />
+                    }
+                    else if (!_myServices.Any())
+                    {
+                        <MudText Color="Color.Secondary">Nu ai încă niciun serviciu adăugat.</MudText>
+                    }
+                    else
+                    {
+                        <MudList T="string">
+                            @foreach (var service in _myServices)
+                            {
+                                <MudListItem T="string">
+                                    <div class="d-flex justify-space-between align-center" style="width: 100%;">
+                                        <div>
+                                            <MudText Typo="Typo.body1"><strong>@service.Name</strong></MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                                @service.DurationMinutes min
+                                                @if (service.CustomPrice.HasValue)
+                                                {
+                                                    <span> • @service.CustomPrice.Value.ToString("0.00") RON (preț custom)</span>
+                                                }
+                                                else
+                                                {
+                                                    <span> • @service.BasePrice.ToString("0.00") RON</span>
+                                                }
+                                            </MudText>
+                                        </div>
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                      Color="Color.Error" 
+                                                      Size="Size.Small"
+                                                      OnClick="@(() => HandleRemoveServiceAsync(service.ServiceId))" />
+                                    </div>
+                                </MudListItem>
+                                <MudDivider />
+                            }
+                        </MudList>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Adaugă Serviciu -->
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Adaugă Serviciu Nou</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudTextField @bind-Value="_newServiceName" 
+                                 Label="Nume serviciu *" 
+                                 Variant="Variant.Outlined"
+                                 Placeholder="ex: Tuns clasic, Aranjare barbă"
+                                 Class="mb-3" />
+
+                    <MudTextField @bind-Value="_newServiceDescription" 
+                                 Label="Descriere (opțional)" 
+                                 Variant="Variant.Outlined"
+                                 Lines="2"
+                                 Placeholder="Detalii despre serviciu"
+                                 Class="mb-3" />
+
+                    <MudTextField @bind-Value="_newServiceDuration" 
+                                 Label="Durată (minute) *" 
+                                 Variant="Variant.Outlined"
+                                 InputType="InputType.Number"
+                                 Placeholder="ex: 30"
+                                 Class="mb-3" />
+
+                    <MudTextField @bind-Value="_newServicePrice" 
+                                 Label="Preț (RON) *" 
+                                 Variant="Variant.Outlined"
+                                 Adornment="Adornment.End"
+                                 AdornmentText="RON"
+                                 Placeholder="ex: 50"
+                                 Class="mb-4" />
+
+                    <MudButton Variant="Variant.Filled" 
+                              Color="Color.Primary" 
+                              FullWidth="true"
+                              Disabled="@(_submitting || string.IsNullOrWhiteSpace(_newServiceName) || _newServiceDuration <= 0 || _newServicePrice <= 0)"
+                              OnClick="HandleCreateServiceAsync">
+                        @if (_submitting)
+                        {
+                            <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+                            <span class="ml-2">Creez...</span>
+                        }
+                        else
+                        {
+                            <span>Creează Serviciu</span>
+                        }
+                    </MudButton>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    private List<AvailableServiceDto> _allServices = new();
+    private List<AvailableServiceDto> _availableServices = new();
+    private List<MyServiceDto> _myServices = new();
+    
+    private Guid _selectedServiceId = Guid.Empty;
+    private decimal? _customPrice;
+    
+    // New service fields
+    private string _newServiceName = string.Empty;
+    private string? _newServiceDescription;
+    private int _newServiceDuration = 30;
+    private decimal _newServicePrice = 50;
+    
+    private bool _loadingAllServices = true;
+    private bool _loadingMyServices = true;
+    private bool _submitting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMyServicesAsync();
+    }
+
+    private async Task LoadMyServicesAsync()
+    {
+        _loadingMyServices = true;
+        try
+        {
+            _myServices = await BarberServiceService.GetMyServicesAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Eroare la încărcarea serviciilor: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loadingMyServices = false;
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loadingAllServices = true;
+        _loadingMyServices = true;
+
+        try
+        {
+            var allServicesTask = BarberServiceService.GetAllServicesAsync();
+            var myServicesTask = BarberServiceService.GetMyServicesAsync();
+
+            await Task.WhenAll(allServicesTask, myServicesTask);
+
+            _allServices = await allServicesTask;
+            _myServices = await myServicesTask;
+
+            UpdateAvailableServices();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Eroare la încărcarea datelor: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loadingAllServices = false;
+            _loadingMyServices = false;
+        }
+    }
+
+    private void UpdateAvailableServices()
+    {
+        var myServiceIds = _myServices.Select(s => s.ServiceId).ToHashSet();
+        _availableServices = _allServices.Where(s => !myServiceIds.Contains(s.Id) && s.IsActive).ToList();
+    }
+
+    private async Task HandleCreateServiceAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newServiceName))
+        {
+            Snackbar.Add("Introdu numele serviciului!", Severity.Warning);
+            return;
+        }
+
+        if (_newServiceDuration <= 0)
+        {
+            Snackbar.Add("Durata trebuie să fie mai mare ca 0!", Severity.Warning);
+            return;
+        }
+
+        if (_newServicePrice <= 0)
+        {
+            Snackbar.Add("Prețul trebuie să fie mai mare ca 0!", Severity.Warning);
+            return;
+        }
+
+        _submitting = true;
+        try
+        {
+            var success = await BarberServiceService.CreateCustomServiceAsync(
+                _newServiceName,
+                _newServiceDescription,
+                _newServiceDuration,
+                _newServicePrice
+            );
+            
+            if (success)
+            {
+                Snackbar.Add("Serviciu creat cu succes!", Severity.Success);
+                
+                // Reset fields
+                _newServiceName = string.Empty;
+                _newServiceDescription = null;
+                _newServiceDuration = 30;
+                _newServicePrice = 50;
+                
+                await LoadMyServicesAsync();
+            }
+            else
+            {
+                Snackbar.Add("Eroare la crearea serviciului.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Eroare: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+
+    private async Task HandleAddServiceAsync()
+    {
+        if (_selectedServiceId == Guid.Empty)
+        {
+            Snackbar.Add("Selectează un serviciu!", Severity.Warning);
+            return;
+        }
+
+        _submitting = true;
+        try
+        {
+            var success = await BarberServiceService.AddServiceAsync(_selectedServiceId, _customPrice);
+            
+            if (success)
+            {
+                Snackbar.Add("Serviciu adăugat cu succes!", Severity.Success);
+                _selectedServiceId = Guid.Empty;
+                _customPrice = null;
+                await LoadDataAsync();
+            }
+            else
+            {
+                Snackbar.Add("Eroare la adăugarea serviciului.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Eroare: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+
+    private async Task HandleRemoveServiceAsync(Guid serviceId)
+    {
+        try
+        {
+            var success = await BarberServiceService.RemoveServiceAsync(serviceId);
+            
+            if (success)
+            {
+                Snackbar.Add("Serviciu șters cu succes!", Severity.Success);
+                await LoadMyServicesAsync();
+            }
+            else
+            {
+                Snackbar.Add("Eroare la ștergerea serviciului.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Eroare: {ex.Message}", Severity.Error);
+        }
+    }
+}

@@ -34,7 +34,11 @@ public class AppointmentRepository(AppDbContext context) : IAppointmentRepositor
             .Where(a => a.BarberId == barberId);
 
         if (date.HasValue)
-            query = query.Where(a => a.AppointmentDate.Date == date.Value.Date);
+        {
+            // Don't use .Date since it generates Kind.Unspecified; instead use start/end bounds
+            var dateValue = date.Value;
+            query = query.Where(a => a.AppointmentDate >= dateValue && a.AppointmentDate < dateValue.AddDays(1));
+        }
 
         return await query.ToListAsync(cancellationToken);
     }

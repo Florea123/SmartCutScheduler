@@ -28,6 +28,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: "Host=smartcut_postgres;Port=5432;Database=smartcutscheduler;Username=postgres;Password=postgres"
+      NPGSQL_ENABLE_LEGACY_TIMESTAMP_BEHAVIOR: "true"
     ports:
       - "5000:5000"
     depends_on:

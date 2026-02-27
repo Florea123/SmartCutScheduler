@@ -14,6 +14,9 @@ using SmartCutScheduler.Infrastructure.Auth;
 using SmartCutScheduler.Infrastructure.Persistence;
 using SmartCutScheduler.Infrastructure.Seeding;
 
+// Enable legacy timestamp behavior for Npgsql to allow DateTime.Unspecified
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add Application & Infrastructure layers
@@ -93,6 +96,7 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
                 "http://localhost:5173",
+                "http://localhost:5177", // Blazor WASM
                 "http://localhost:5000",
                 "http://localhost:3000"
             )
@@ -160,6 +164,8 @@ app.UseAuthorization();
 // Map Endpoints
 app.MapAuthEndpoints();
 app.MapBarberEndpoints();
+app.MapBarberServicesEndpoints();
+app.MapUserEndpoints();
 app.MapServiceEndpoints();
 app.MapAvailabilityEndpoints();
 app.MapAppointmentEndpoints();

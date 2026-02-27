@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.AspNetCore.Http;
+using SmartCutScheduler.Domain.Entities;
 using SmartCutScheduler.Domain.Enums;
 using SmartCutScheduler.Domain.Repositories;
 
@@ -32,41 +33,65 @@ public class GetAvailableSlotsQueryHandler(
         var workSchedule = barber.WorkSchedules
             .FirstOrDefault(ws => ws.DayOfWeek == dayOfWeek && ws.IsWorkingDay);
 
+        // If no work schedule in DB, use default Monday-Friday 08:00-18:00
         if (workSchedule is null)
+        {
+            // Check if it's a working day (Monday to Friday)
+            if ((int)dayOfWeek >= 1 && (int)dayOfWeek <= 5)
+            {
+                // Use default schedule: 08:00-18:00
+                var defaultStartTime = new TimeSpan(8, 0, 0);
+                var defaultEndTime = new TimeSpan(18, 0, 0);
+                
+                // Get existing appointments for this barber on this date
+                var appointments = await appointmentRepository.GetByBarberIdAsync(request.BarberId, request.Date.Date, cancellationToken);
+                var appointmentsList = appointments
+                    .Where(a => a.Status != AppointmentStatus.Cancelled)
+                    .ToList();
+
+                // Generate time slots with default schedule
+                return Results.Ok(GenerateSlots(defaultStartTime, defaultEndTime, service.DurationMinutes, request.Date, appointmentsList));
+            }
+            
             return Results.Ok(new { availableSlots = new List<object>(), message = "Barber is not working on this day." });
+        }
 
         // Get existing appointments for this barber on this date
-        var appointments = await appointmentRepository.GetByBarberIdAsync(request.BarberId, request.Date.Date, cancellationToken);
-        var appointmentsList = appointments
+        var appointmentsWithSchedule = await appointmentRepository.GetByBarberIdAsync(request.BarberId, request.Date.Date, cancellationToken);
+        var appointmentsListWithSchedule = appointmentsWithSchedule
             .Where(a => a.Status != AppointmentStatus.Cancelled)
-            .Select(a => new { a.StartTime, a.EndTime })
             .ToList();
 
-        // Generate time slots
-        var slots = new List<object>();
-        var currentTime = workSchedule.StartTime;
-        var serviceDuration = TimeSpan.FromMinutes(service.DurationMinutes);
+        // Generate time slots with work schedule from DB
+        return Results.Ok(GenerateSlots(workSchedule.StartTime, workSchedule.EndTime, service.DurationMinutes, request.Date, appointmentsListWithSchedule));
+    }
 
-        while (currentTime.Add(serviceDuration) <= workSchedule.EndTime)
+    private static object GenerateSlots(TimeSpan startTime, TimeSpan endTime, int serviceDuration, DateTime date, IEnumerable<Appointment> appointments)
+    {
+        var slots = new List<string>();
+        var currentTime = startTime;
+        var serviceDurationSpan = TimeSpan.FromMinutes(serviceDuration);
+
+        while (currentTime.Add(serviceDurationSpan) <= endTime)
         {
-            var slotEnd = currentTime.Add(serviceDuration);
+            var slotEnd = currentTime.Add(serviceDurationSpan);
             
             // Check if this slot overlaps with any existing appointment
-            var isAvailable = !appointmentsList.Any(a =>
+            var isAvailable = !appointments.Any(a =>
                 (currentTime >= a.StartTime && currentTime < a.EndTime) ||
                 (slotEnd > a.StartTime && slotEnd <= a.EndTime) ||
                 (currentTime <= a.StartTime && slotEnd >= a.EndTime));
 
-            slots.Add(new
+            if (isAvailable)
             {
-                startTime = currentTime.ToString(@"hh\:mm"),
-                endTime = slotEnd.ToString(@"hh\:mm"),
-                isAvailable
-            });
+                // Return full DateTime for the slot
+                var slotDateTime = date.Date.Add(currentTime);
+                slots.Add(slotDateTime.ToString("yyyy-MM-ddTHH:mm:ss"));
+            }
 
             currentTime = currentTime.Add(TimeSpan.FromMinutes(30)); // 30-minute intervals
         }
 
-        return Results.Ok(new { date = request.Date.ToString("yyyy-MM-dd"), slots });
+        return new { date = date.ToString("yyyy-MM-dd"), availableSlots = slots };
     }
 }

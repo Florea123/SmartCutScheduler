@@ -1,0 +1,97 @@
+@page "/appointments"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject IAppointmentService AppointmentService
+
+<PageTitle>Programările Mele</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
+    <MudText Typo="Typo.h4" Class="mb-4">Programările Mele</MudText>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (_appointments.Any())
+    {
+        <MudTable Items="@_appointments" Hover="true" Breakpoint="Breakpoint.Sm">
+            <HeaderContent>
+                <MudTh>Frizer</MudTh>
+                <MudTh>Serviciu</MudTh>
+                <MudTh>Data</MudTh>
+                <MudTh>Ora</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Acțiuni</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Frizer">@context.BarberName</MudTd>
+                <MudTd DataLabel="Serviciu">@context.ServiceName</MudTd>
+                <MudTd DataLabel="Data">@context.ScheduledStartUtc.ToLocalTime().ToString("dd MMM yyyy")</MudTd>
+                <MudTd DataLabel="Ora">@context.ScheduledStartUtc.ToLocalTime().ToString("HH:mm")</MudTd>
+                <MudTd DataLabel="Status">
+                    <MudChip T="string" Color="@GetStatusColor(context.Status)" Size="Size.Small">
+                        @context.Status
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Acțiuni">
+                    @if (context.Status == "Scheduled" || context.Status == "Confirmed")
+                    {
+                        <MudButton Size="Size.Small" 
+                                   Variant="Variant.Text" 
+                                   Color="Color.Error"
+                                   OnClick="() => CancelAppointmentAsync(context.Id)">
+                            Anulează
+                        </MudButton>
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Info">
+            Nu ai programări. <MudLink Href="/">Programează-te acum!</MudLink>
+        </MudAlert>
+    }
+</MudContainer>
+
+@code {
+    private List<AppointmentDto> _appointments = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAppointmentsAsync();
+    }
+
+    private async Task LoadAppointmentsAsync()
+    {
+        _loading = true;
+        try
+        {
+            _appointments = await AppointmentService.GetMyAppointmentsAsync();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task CancelAppointmentAsync(Guid id)
+    {
+        var success = await AppointmentService.CancelAppointmentAsync(id);
+        if (success)
+        {
+            await LoadAppointmentsAsync();
+        }
+    }
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "Scheduled" => Color.Info,
+        "Confirmed" => Color.Success,
+        "Completed" => Color.Default,
+        "Cancelled" => Color.Error,
+        _ => Color.Default
+    };
+}
