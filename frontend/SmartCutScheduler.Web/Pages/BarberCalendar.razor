@@ -1,0 +1,314 @@
+@page "/barber/{BarberId:guid}"
+@using SmartCutScheduler.Web.Models
+@using SmartCutScheduler.Web.Services
+@inject IBarberService BarberService
+@inject IAppointmentService AppointmentService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>@(_barber?.Name ?? "Barber") - Calendar</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    @if (_loading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (_barber == null)
+    {
+        <MudAlert Severity="Severity.Error">Frizerul nu a fost găsit</MudAlert>
+    }
+    else
+    {
+        <MudPaper Class="pa-4 mb-4">
+            <MudText Typo="Typo.h4" Class="mb-2">@_barber.Name</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary">@_barber.Description</MudText>
+        </MudPaper>
+
+        <!-- Calendar Month View -->
+        <MudPaper Class="pa-4 mb-4">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+                <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="PreviousMonth" />
+                <MudText Typo="Typo.h5">@_currentMonth.ToString("MMMM yyyy")</MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="NextMonth" />
+            </MudStack>
+
+            <!-- Calendar Grid -->
+            <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;">
+                <!-- Day Headers -->
+                @foreach (var day in new[] { "Lun", "Mar", "Mie", "Joi", "Vin", "Sâm", "Dum" })
+                {
+                    <div style="text-align: center; padding: 8px;">
+                        <MudText Typo="Typo.subtitle2" Color="Color.Secondary"><strong>@day</strong></MudText>
+                    </div>
+                }
+
+                <!-- Calendar Days -->
+                @foreach (var day in _calendarDays)
+                {
+                    var isToday = day == DateTime.Today;
+                    var isCurrentMonth = day.Month == _currentMonth.Month;
+                    var isSelected = day.Date == _selectedDate?.Date;
+                    var isWorkingDay = IsWorkingDay(day.DayOfWeek);
+                    var isPast = day < DateTime.Today;
+                    var isBeyondMaxDate = day > _maxDate;
+                    var isDisabled = !isCurrentMonth || isPast || !isWorkingDay || isBeyondMaxDate;
+                    
+                    var backgroundColor = "white";
+                    if (!isCurrentMonth)
+                    {
+                        backgroundColor = "#f5f5f5";
+                    }
+                    else if (!isWorkingDay)
+                    {
+                        backgroundColor = "#e0e0e0"; // Gri pentru weekend
+                    }
+                    else if (isPast || isBeyondMaxDate)
+                    {
+                        backgroundColor = "#f5f5f5"; // Gri deschis pentru zile invalide
+                    }
+                    
+                    if (isSelected)
+                    {
+                        backgroundColor = "#1976d2";
+                    }
+
+                    <div>
+                        <MudButton 
+                            Variant="Variant.Filled"
+                            FullWidth="true"
+                            Style="@($"height: 60px; background-color: {backgroundColor}; color: {(isSelected ? "white" : (isCurrentMonth ? "black" : "#bdbdbd"))}; border: {(isToday && !isSelected ? "2px solid #2196f3" : "1px solid #e0e0e0")}")"
+                            OnClick="@(() => SelectDay(day))"
+                            Disabled="@isDisabled">
+                            <MudText Typo="Typo.body1">@day.Day</MudText>
+                        </MudButton>
+                    </div>
+                }
+            </div>
+        </MudPaper>
+
+        <!-- Time Slots -->
+        @if (_selectedDate.HasValue)
+        {
+            <MudPaper Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-3">
+                    Ore disponibile pentru @_selectedDate.Value.ToString("dd MMMM yyyy")
+                </MudText>
+
+                @if (_loadingSlots)
+                {
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                }
+                else if (!_daySlots.Any())
+                {
+                    <MudAlert Severity="Severity.Warning">Nu sunt ore disponibile în această zi</MudAlert>
+                }
+                else
+                {
+                    <MudGrid Spacing="2">
+                        @foreach (var slot in _daySlots)
+                        {
+                            var slotTime = DateTime.Parse(slot.Time);
+                            var isPast = _selectedDate.Value.Date == DateTime.Today && slotTime.TimeOfDay < DateTime.Now.TimeOfDay;
+                            var isDisabled = slot.IsBooked || isPast;
+                            
+                            var buttonColor = slot.IsBooked ? Color.Error : Color.Success;
+                            var buttonText = slot.IsBooked ? "Ocupat" : slotTime.ToString("HH:mm");
+                            
+                            <MudItem xs="6" sm="3" md="2">
+                                <MudButton 
+                                    Variant="Variant.Filled" 
+                                    Color="@buttonColor"
+                                    FullWidth="true"
+                                    Disabled="@isDisabled"
+                                    Style="@(isPast ? "opacity: 0.5" : "")"
+                                    OnClick="@(() => SelectTimeSlot(slot))">
+                                    @buttonText
+                                </MudButton>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+            </MudPaper>
+        }
+    }
+</MudContainer>
+
+<!-- Service Selection Dialog -->
+<MudDialog @bind-IsVisible="_showServiceDialog" Options="new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true }">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Selectează Serviciul</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-3">
+            Programare pentru ora: @_selectedSlot?.ToString("HH:mm")
+        </MudText>
+        <MudSelect T="Guid?" @bind-Value="_selectedServiceId" Label="Serviciu" Variant="Variant.Outlined" Required="true">
+            @foreach (var service in _services)
+            {
+                <MudSelectItem T="Guid?" Value="service.Id">
+                    @service.Name - @service.Price Lei (@service.DurationMinutes min)
+                </MudSelectItem>
+            }
+        </MudSelect>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CancelServiceSelection">Anulează</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="ConfirmAppointment" Disabled="@(!_selectedServiceId.HasValue)">
+            Confirmă
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public Guid BarberId { get; set; }
+
+    private BarberDto? _barber;
+    private List<ServiceDto> _services = new();
+    private List<TimeSlotDto> _daySlots = new();
+    private List<DateTime> _calendarDays = new();
+
+    private DateTime _currentMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime _maxDate = DateTime.Today.AddMonths(2); // Maxim 2 luni în viitor
+    private DateTime? _selectedDate;
+    private Guid? _selectedServiceId;
+    private DateTime? _selectedSlot;
+    private bool _showServiceDialog = false;
+
+    private bool _loading = true;
+    private bool _loadingSlots = false;
+    private string _notes = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBarberData();
+        GenerateCalendarDays();
+    }
+
+    private async Task LoadBarberData()
+    {
+        _loading = true;
+        _barber = await BarberService.GetBarberByIdAsync(BarberId);
+        _services = await BarberService.GetServicesAsync();
+        _loading = false;
+    }
+
+    private void GenerateCalendarDays()
+    {
+        _calendarDays.Clear();
+        var firstDayOfMonth = _currentMonth;
+        var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
+
+        // Start from Monday of the week containing the first day
+        var startDate = firstDayOfMonth.AddDays(-(int)firstDayOfMonth.DayOfWeek + (int)DayOfWeek.Monday);
+        if (startDate > firstDayOfMonth) startDate = startDate.AddDays(-7);
+
+        // End on Sunday of the week containing the last day
+        var endDate = lastDayOfMonth.AddDays((int)DayOfWeek.Sunday - (int)lastDayOfMonth.DayOfWeek);
+        if (endDate < lastDayOfMonth) endDate = endDate.AddDays(7);
+
+        for (var date = startDate; date <= endDate; date = date.AddDays(1))
+        {
+            _calendarDays.Add(date);
+        }
+    }
+
+    private bool IsWorkingDay(DayOfWeek dayOfWeek)
+    {
+        // Frizerul lucrează Luni-Vineri (08:00-18:00)
+        return dayOfWeek >= DayOfWeek.Monday && dayOfWeek <= DayOfWeek.Friday;
+    }
+
+    private void PreviousMonth()
+    {
+        var newMonth = _currentMonth.AddMonths(-1);
+        // Nu permite navigare înainte de luna curentă
+        if (newMonth >= new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1))
+        {
+            _currentMonth = newMonth;
+            GenerateCalendarDays();
+        }
+    }
+
+    private void NextMonth()
+    {
+        var newMonth = _currentMonth.AddMonths(1);
+        // Nu permite navigare după +2 luni de la data curentă
+        if (newMonth <= _maxDate)
+        {
+            _currentMonth = newMonth;
+            GenerateCalendarDays();
+        }
+    }
+
+    private async Task SelectDay(DateTime day)
+    {
+        // Verifică dacă ziua este în range valid (azi → +2 luni) și este zi de lucru
+        if (day < DateTime.Today || day > _maxDate || !IsWorkingDay(day.DayOfWeek))
+            return;
+
+        _selectedDate = day;
+        _daySlots.Clear();
+        _selectedSlot = null;
+        _selectedServiceId = null;
+        
+        await LoadDaySlotsAsync();
+    }
+
+    private async Task LoadDaySlotsAsync()
+    {
+        if (!_selectedDate.HasValue)
+            return;
+
+        _loadingSlots = true;
+        _daySlots = await AppointmentService.GetDaySlotsAsync(BarberId, _selectedDate.Value);
+        _loadingSlots = false;
+    }
+
+    private void SelectTimeSlot(TimeSlotDto slot)
+    {
+        if (slot.IsBooked)
+            return;
+
+        _selectedSlot = DateTime.Parse(slot.Time);
+        _showServiceDialog = true;
+    }
+
+    private void CancelServiceSelection()
+    {
+        _showServiceDialog = false;
+        _selectedServiceId = null;
+        _selectedSlot = null;
+    }
+
+    private async Task ConfirmAppointment()
+    {
+        // Check authentication
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (!authState.User.Identity?.IsAuthenticated ?? true)
+        {
+            Navigation.NavigateTo($"/login?returnUrl=/barber/{BarberId}");
+            return;
+        }
+
+        if (!_selectedServiceId.HasValue || !_selectedSlot.HasValue)
+        {
+            return;
+        }
+
+        var request = new CreateAppointmentRequest
+        {
+            BarberId = BarberId,
+            ServiceId = _selectedServiceId.Value,
+            ScheduledStartUtc = _selectedSlot.Value,
+            Notes = _notes
+        };
+
+        var success = await AppointmentService.CreateAppointmentAsync(request);
+        if (success)
+        {
+            _showServiceDialog = false;
+            Navigation.NavigateTo("/appointments");
+        }
+    }
+}

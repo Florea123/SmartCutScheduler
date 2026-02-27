@@ -1,0 +1,187 @@
+@page "/login"
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Login / Register</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-16">
+    <MudPaper Class="pa-8" Elevation="3">
+        <MudTabs ApplyEffectsToContainer="true" Class="mb-4">
+            <MudTabPanel Text="Login">
+                <EditForm Model="@_loginModel" OnValidSubmit="HandleLoginAsync">
+                    <DataAnnotationsValidator />
+                    
+                    <MudText Typo="Typo.h5" Class="mb-4">Autentificare</MudText>
+
+                    @if (!string.IsNullOrEmpty(_loginError))
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mb-4">@_loginError</MudAlert>
+                    }
+
+                    <MudTextField @bind-Value="_loginModel.Email" 
+                                  Label="Email" 
+                                  Variant="Variant.Outlined" 
+                                  Required="true"
+                                  InputType="InputType.Email"
+                                  Class="mb-4" />
+
+                    <MudTextField @bind-Value="_loginModel.Password" 
+                                  Label="Parolă" 
+                                  Variant="Variant.Outlined" 
+                                  Required="true"
+                                  InputType="InputType.Password"
+                                  Class="mb-4" />
+
+                    <MudButton ButtonType="ButtonType.Submit" 
+                               Variant="Variant.Filled" 
+                               Color="Color.Primary" 
+                               FullWidth="true"
+                               Disabled="_loginLoading">
+                        @if (_loginLoading)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                        }
+                        else
+                        {
+                            <span>Login</span>
+                        }
+                    </MudButton>
+                </EditForm>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Register">
+                <EditForm Model="@_registerModel" OnValidSubmit="HandleRegisterAsync">
+                    <DataAnnotationsValidator />
+                    
+                    <MudText Typo="Typo.h5" Class="mb-4">Înregistrare</MudText>
+
+                    @if (!string.IsNullOrEmpty(_registerError))
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mb-4">@_registerError</MudAlert>
+                    }
+
+                    <MudTextField @bind-Value="_registerModel.Name" 
+                                  Label="Nume complet" 
+                                  Variant="Variant.Outlined" 
+                                  Required="true"
+                                  Class="mb-3" />
+
+                    <MudTextField @bind-Value="_registerModel.Email" 
+                                  Label="Email" 
+                                  Variant="Variant.Outlined" 
+                                  Required="true"
+                                  InputType="InputType.Email"
+                                  Class="mb-3" />
+
+                    <MudTextField @bind-Value="_registerModel.PhoneNumber" 
+                                  Label="Telefon" 
+                                  Variant="Variant.Outlined" 
+                                  Required="true"
+                                  Class="mb-3" />
+
+                    <MudTextField @bind-Value="_registerModel.Password" 
+                                  Label="Parolă" 
+                                  Variant="Variant.Outlined" 
+                                  Required="true"
+                                  InputType="InputType.Password"
+                                  Class="mb-3" />
+
+                    <MudTextField @bind-Value="_registerModel.ConfirmPassword" 
+                                  Label="Confirmă parola" 
+                                  Variant="Variant.Outlined" 
+                                  Required="true"
+                                  InputType="InputType.Password"
+                                  Class="mb-4" />
+
+                    <MudButton ButtonType="ButtonType.Submit" 
+                               Variant="Variant.Filled" 
+                               Color="Color.Primary" 
+                               FullWidth="true"
+                               Disabled="_registerLoading">
+                        @if (_registerLoading)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                        }
+                        else
+                        {
+                            <span>Înregistrare</span>
+                        }
+                    </MudButton>
+                </EditForm>
+            </MudTabPanel>
+        </MudTabs>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    private LoginRequest _loginModel = new();
+    private RegisterRequest _registerModel = new();
+    private bool _loginLoading = false;
+    private bool _registerLoading = false;
+    private string? _loginError;
+    private string? _registerError;
+
+    private async Task HandleLoginAsync()
+    {
+        _loginLoading = true;
+        _loginError = null;
+
+        try
+        {
+            var result = await AuthService.LoginAsync(_loginModel);
+            if (result != null)
+            {
+                Navigation.NavigateTo(ReturnUrl ?? "/");
+            }
+            else
+            {
+                _loginError = "Email sau parolă incorectă.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _loginError = $"Eroare: {ex.Message}";
+        }
+        finally
+        {
+            _loginLoading = false;
+        }
+    }
+
+    private async Task HandleRegisterAsync()
+    {
+        _registerLoading = true;
+        _registerError = null;
+
+        if (_registerModel.Password != _registerModel.ConfirmPassword)
+        {
+            _registerError = "Parolele nu coincid.";
+            _registerLoading = false;
+            return;
+        }
+
+        try
+        {
+            var result = await AuthService.RegisterAsync(_registerModel);
+            if (result != null)
+            {
+                Navigation.NavigateTo(ReturnUrl ?? "/");
+            }
+            else
+            {
+                _registerError = "Înregistrarea a eșuat. Te rugăm să verifici datele introduse.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _registerError = $"Eroare: {ex.Message}";
+        }
+        finally
+        {
+            _registerLoading = false;
+        }
+    }
+}

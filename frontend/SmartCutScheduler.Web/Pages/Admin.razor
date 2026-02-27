@@ -1,0 +1,488 @@
+@page "/admin"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
+@inject IApiService ApiService
+@inject IAdminService AdminService
+@inject IBarberService BarberService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Admin Panel</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-8">
+    <MudText Typo="Typo.h4" Class="mb-6">Panou Admin</MudText>
+
+    <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+        <!-- Tab 1: Adaugă Frizer -->
+        <MudTabPanel Text="Adaugă Frizer" Icon="@Icons.Material.Filled.PersonAdd">
+            <MudPaper Class="pa-6">
+                <MudText Typo="Typo.h5" Class="mb-4">Adaugă Frizer Nou</MudText>
+
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+                }
+
+                @if (!string.IsNullOrEmpty(_successMessage))
+                {
+                    <MudAlert Severity="Severity.Success" Class="mb-4">@_successMessage</MudAlert>
+                }
+
+                <EditForm Model="@_barberModel" OnValidSubmit="HandleSubmitAsync">
+                    <DataAnnotationsValidator />
+
+                    <MudGrid>
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="_barberModel.Name" 
+                                          Label="Nume complet" 
+                                          Variant="Variant.Outlined" 
+                                          Required="true"
+                                          Class="mb-3" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="_barberModel.Email" 
+                                          Label="Email" 
+                                          Variant="Variant.Outlined" 
+                                          Required="true"
+                                          InputType="InputType.Email"
+                                          Class="mb-3" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="_barberModel.PhoneNumber" 
+                                          Label="Telefon" 
+                                          Variant="Variant.Outlined" 
+                                          Required="true"
+                                          Class="mb-3" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="_barberModel.Password" 
+                                          Label="Parolă" 
+                                          Variant="Variant.Outlined" 
+                                          Required="true"
+                                          InputType="InputType.Password"
+                                          Class="mb-3" />
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_barberModel.Description" 
+                                          Label="Descriere" 
+                                          Variant="Variant.Outlined" 
+                                          Lines="3"
+                                          Class="mb-3" />
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_barberModel.PhotoUrl" 
+                                          Label="URL poză (opțional)" 
+                                          Variant="Variant.Outlined"
+                                          Class="mb-4" />
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudButton ButtonType="ButtonType.Submit" 
+                                       Variant="Variant.Filled" 
+                                       Color="Color.Primary"
+                                       Disabled="_submitting"
+                                       FullWidth="true">
+                                @if (_submitting)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                    <span>Se adaugă...</span>
+                                }
+                                else
+                                {
+                                    <span>Adaugă Frizer</span>
+                                }
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </EditForm>
+            </MudPaper>
+        </MudTabPanel>
+
+        <!-- Tab 2: Vezi Utilizatori -->
+        <MudTabPanel Text="Utilizatori" Icon="@Icons.Material.Filled.People">
+            <MudPaper Class="pa-6">
+                <MudText Typo="Typo.h5" Class="mb-4">Toți Utilizatorii</MudText>
+
+                @if (_loadingUsers)
+                {
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                }
+                else if (_users.Any())
+                {
+                    <MudTable Items="@_users" Hover="true" Breakpoint="Breakpoint.Sm" Dense="true">
+                        <HeaderContent>
+                            <MudTh>Nume</MudTh>
+                            <MudTh>Email</MudTh>
+                            <MudTh>Telefon</MudTh>
+                            <MudTh>Rol</MudTh>
+                            <MudTh>Data Creării</MudTh>
+                            <MudTh>Acțiuni</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Nume">@context.Name</MudTd>
+                            <MudTd DataLabel="Email">@context.Email</MudTd>
+                            <MudTd DataLabel="Telefon">@context.PhoneNumber</MudTd>
+                            <MudTd DataLabel="Rol">
+                                <MudChip T="string" Size="Size.Small" Color="@GetRoleColor(context.Role)">@context.Role</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Data Creării">@context.CreatedAtUtc.ToString("dd.MM.yyyy")</MudTd>
+                            <MudTd DataLabel="Acțiuni">
+                                <MudTooltip Text="Vezi detalii">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Info" 
+                                                   Color="Color.Info" 
+                                                   Size="Size.Small"
+                                                   OnClick="() => ShowUserDetails(context)" />
+                                </MudTooltip>
+                                <MudTooltip Text="Șterge utilizator">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                   Color="Color.Error" 
+                                                   Size="Size.Small"
+                                                   OnClick="() => DeleteUser(context.Id)" />
+                                </MudTooltip>
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">Nu există utilizatori înregistrați.</MudAlert>
+                }
+            </MudPaper>
+        </MudTabPanel>
+
+        <!-- Tab 3: Vezi Frizeri -->
+        <MudTabPanel Text="Frizeri" Icon="@Icons.Material.Filled.ContentCut">
+            <MudPaper Class="pa-6">
+                <MudText Typo="Typo.h5" Class="mb-4">Toți Frizerii</MudText>
+
+                @if (_loadingBarbers)
+                {
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                }
+                else if (_barbers.Any())
+                {
+                    <MudTable Items="@_barbers" Hover="true" Breakpoint="Breakpoint.Sm" Dense="true">
+                        <HeaderContent>
+                            <MudTh>Nume</MudTh>
+                            <MudTh>Email</MudTh>
+                            <MudTh>Telefon</MudTh>
+                            <MudTh>Servicii</MudTh>
+                            <MudTh>Status</MudTh>
+                            <MudTh>Acțiuni</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Nume">@context.Name</MudTd>
+                            <MudTd DataLabel="Email">@context.Email</MudTd>
+                            <MudTd DataLabel="Telefon">@context.PhoneNumber</MudTd>
+                            <MudTd DataLabel="Servicii">
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary">@context.Services.Count servicii</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Status">
+                                <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Error)">
+                                    @(context.IsActive ? "Activ" : "Inactiv")
+                                </MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Acțiuni">
+                                <MudTooltip Text="Vezi detalii">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Info" 
+                                                   Color="Color.Info" 
+                                                   Size="Size.Small"
+                                                   OnClick="() => ShowBarberDetails(context)" />
+                                </MudTooltip>
+                                <MudTooltip Text="Șterge frizer">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                   Color="Color.Error" 
+                                                   Size="Size.Small"
+                                                   OnClick="() => DeleteBarber(context.Id)" />
+                                </MudTooltip>
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">Nu există frizeri înregistrați.</MudAlert>
+                }
+            </MudPaper>
+        </MudTabPanel>
+    </MudTabs>
+</MudContainer>
+
+<!-- Dialog pentru detalii utilizator -->
+<MudDialog @bind-IsVisible="_showUserDialog" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Detalii Utilizator</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_selectedUser != null)
+        {
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudText><strong>ID:</strong> @_selectedUser.Id</MudText>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudText><strong>Nume:</strong> @_selectedUser.Name</MudText>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudText><strong>Email:</strong> @_selectedUser.Email</MudText>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudText><strong>Telefon:</strong> @(_selectedUser.PhoneNumber ?? "N/A")</MudText>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudText><strong>Rol:</strong> @_selectedUser.Role</MudText>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudText><strong>Data Creării:</strong> @_selectedUser.CreatedAtUtc.ToString("dd.MM.yyyy HH:mm")</MudText>
+                </MudItem>
+            </MudGrid>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _showUserDialog = false">Închide</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Dialog pentru detalii frizer -->
+<MudDialog @bind-IsVisible="_showBarberDialog" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Detalii Frizer</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_selectedBarber != null)
+        {
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudText><strong>ID:</strong> @_selectedBarber.Id</MudText>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudText><strong>Nume:</strong> @_selectedBarber.Name</MudText>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudText><strong>Email:</strong> @_selectedBarber.Email</MudText>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudText><strong>Telefon:</strong> @_selectedBarber.PhoneNumber</MudText>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudText><strong>Descriere:</strong> @_selectedBarber.Description</MudText>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudText Typo="Typo.h6" Class="mt-2 mb-2">Servicii Oferite:</MudText>
+                    @foreach (var service in _selectedBarber.Services)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="mr-1 mb-1">
+                            @service.Name - @service.Price RON (@service.DurationMinutes min)
+                        </MudChip>
+                    }
+                </MudItem>
+            </MudGrid>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _showBarberDialog = false">Închide</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    // Add Barber
+    private CreateBarberRequest _barberModel = new();
+    private bool _submitting = false;
+    private string? _errorMessage;
+    private string? _successMessage;
+
+    // Users
+    private List<UserDto> _users = new();
+    private bool _loadingUsers = false;
+    private UserDto? _selectedUser;
+    private bool _showUserDialog = false;
+
+    // Barbers
+    private List<BarberDto> _barbers = new();
+    private bool _loadingBarbers = false;
+    private BarberDto? _selectedBarber;
+    private bool _showBarberDialog = false;
+
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsersAsync();
+        await LoadBarbersAsync();
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        _loadingUsers = true;
+        try
+        {
+            _users = await AdminService.GetAllUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Eroare la încărcarea utilizatorilor: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loadingUsers = false;
+        }
+    }
+
+    private async Task LoadBarbersAsync()
+    {
+        _loadingBarbers = true;
+        try
+        {
+            _barbers = await BarberService.GetAllBarbersAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Eroare la încărcarea frizerilor: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loadingBarbers = false;
+        }
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        _submitting = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        try
+        {
+            var response = await ApiService.PostAsync("/api/barbers", _barberModel);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                _successMessage = "Frizer adăugat cu succes!";
+                _barberModel = new();
+                await LoadBarbersAsync();
+                Snackbar.Add("Frizer adăugat cu succes!", Severity.Success);
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                _errorMessage = $"Eroare: {error}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Eroare: {ex.Message}";
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+
+    private void ShowUserDetails(UserDto user)
+    {
+        _selectedUser = user;
+        _showUserDialog = true;
+    }
+
+    private void ShowBarberDetails(BarberDto barber)
+    {
+        _selectedBarber = barber;
+        _showBarberDialog = true;
+    }
+
+    private async Task DeleteUser(Guid userId)
+    {
+        var parameters = new DialogParameters
+        {
+            { "ContentText", "Sigur vrei să ștergi acest utilizator?" },
+            { "ButtonText", "Șterge" },
+            { "Color", Color.Error }
+        };
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("Confirmare", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            try
+            {
+                var success = await AdminService.DeleteUserAsync(userId);
+                if (success)
+                {
+                    Snackbar.Add("Utilizator șters cu succes!", Severity.Success);
+                    await LoadUsersAsync();
+                }
+                else
+                {
+                    Snackbar.Add("Eroare la ștergerea utilizatorului.", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Eroare: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task DeleteBarber(Guid barberId)
+    {
+        var parameters = new DialogParameters
+        {
+            { "ContentText", "Sigur vrei să ștergi acest frizer?" },
+            { "ButtonText", "Șterge" },
+            { "Color", Color.Error }
+        };
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("Confirmare", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            try
+            {
+                var success = await AdminService.DeleteBarberAsync(barberId);
+                if (success)
+                {
+                    Snackbar.Add("Frizer șters cu succes!", Severity.Success);
+                    await LoadBarbersAsync();
+                }
+                else
+                {
+                    Snackbar.Add("Eroare la ștergerea frizerului.", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Eroare: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private Color GetRoleColor(string role)
+    {
+        return role switch
+        {
+            "Admin" => Color.Error,
+            "Barber" => Color.Primary,
+            "Customer" => Color.Default,
+            _ => Color.Default
+        };
+    }
+
+    public class CreateBarberRequest
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string? PhotoUrl { get; set; }
+    }
+}
