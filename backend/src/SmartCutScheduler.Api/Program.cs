@@ -162,6 +162,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 // Map Endpoints
+
 app.MapAuthEndpoints();
 app.MapBarberEndpoints();
 app.MapBarberServicesEndpoints();
@@ -169,6 +170,8 @@ app.MapUserEndpoints();
 app.MapServiceEndpoints();
 app.MapAvailabilityEndpoints();
 app.MapAppointmentEndpoints();
+app.MapPaymentEndpoints();
+app.MapStripeWebhookEndpoints();
 
 app.Run();
 

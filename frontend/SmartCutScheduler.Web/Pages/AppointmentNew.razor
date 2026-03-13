@@ -1,0 +1,106 @@
+@using MudBlazor
+@page "/appointment/new"
+@using SmartCutScheduler.Web.Models
+@using Microsoft.AspNetCore.WebUtilities
+@inject NavigationManager Navigation
+@inject IAppointmentService AppointmentService
+@inject IBarberService BarberService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject HttpClient Http
+
+<PageTitle>Finalizează programarea</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8">
+    <MudText Typo="Typo.h5" Class="mb-4">Finalizează programarea</MudText>
+    <MudPaper Class="pa-4 mb-4">
+        <MudText Typo="Typo.subtitle1">Frizer: @BarberName</MudText>
+        <MudText Typo="Typo.subtitle1">Data: @(Date.HasValue ? Date.Value.ToString("dd MMM yyyy") : "-")</MudText>
+        <MudText Typo="Typo.subtitle1">Ora: @(Date.HasValue ? Date.Value.ToString("HH:mm") : "-")</MudText>
+    </MudPaper>
+    <MudSelect T="Guid?" @bind-Value="SelectedServiceId" Label="Alege serviciul" Variant="Variant.Outlined" Required="true">
+        @foreach (var service in Services)
+        {
+            <MudSelectItem T="Guid?" Value="service.Id">
+                @service.Name - @service.Price Lei (@service.DurationMinutes min)
+            </MudSelectItem>
+        }
+    </MudSelect>
+    <MudTextField @bind-Value="Note" Label="Note (opțional)" Variant="Variant.Outlined" Class="mt-4" />
+    <MudText Typo="Typo.h6" Class="mt-4">Total: <b>@SelectedServicePrice.ToString("0.00") Lei</b></MudText>
+    <MudButton Disabled="@(!SelectedServiceId.HasValue)" Color="Color.Primary" Variant="Variant.Filled" Class="mt-4" OnClick="StartStripePayment">
+        Plătește cu cardul
+    </MudButton>
+</MudContainer>
+
+@code {
+    [Parameter] public Guid? BarberId { get; set; }
+    [Parameter] public DateTime? Date { get; set; }
+    [Parameter] public Guid? ServiceId { get; set; }
+
+    private string BarberName = string.Empty;
+    private List<ServiceDto> Services = new();
+    private Guid? SelectedServiceId;
+    private string Note = string.Empty;
+    private decimal SelectedServicePrice => Services.FirstOrDefault(s => s.Id == SelectedServiceId)?.Price ?? 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Parse query string if parameters are not set (for direct navigation)
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        if (!BarberId.HasValue && query.TryGetValue("barberId", out var barberIdStr))
+            BarberId = Guid.TryParse(barberIdStr, out var bid) ? bid : (Guid?)null;
+        if (!Date.HasValue && query.TryGetValue("date", out var dateStr))
+            Date = DateTime.TryParse(dateStr, null, System.Globalization.DateTimeStyles.RoundtripKind, out var d) ? d : (DateTime?)null;
+        if (!ServiceId.HasValue && query.TryGetValue("serviceId", out var serviceIdStr))
+            ServiceId = Guid.TryParse(serviceIdStr, out var sid) ? sid : (Guid?)null;
+
+        if (BarberId.HasValue)
+        {
+            var barber = await BarberService.GetBarberByIdAsync(BarberId.Value);
+            if (barber != null)
+            {
+                BarberName = barber.Name;
+                Services = barber.Services;
+            }
+        }
+        if (ServiceId.HasValue)
+            SelectedServiceId = ServiceId;
+    }
+
+    private async Task StartStripePayment()
+    {
+        if (!SelectedServiceId.HasValue || !BarberId.HasValue || !Date.HasValue)
+            return;
+
+        var service = Services.FirstOrDefault(s => s.Id == SelectedServiceId);
+        if (service == null)
+            return;
+
+        var apiBase = "/api/payments/create-checkout-session";
+        var req = new {
+            BarberId = BarberId.Value,
+            ServiceId = SelectedServiceId.Value,
+            Date = Date.Value,
+            ServiceName = service.Name,
+            Amount = service.Price,
+            Notes = Note,
+            SuccessUrl = "http://localhost:5177/",
+            CancelUrl = "http://localhost:5177/"
+        };
+
+        // Folosește HttpClient injectat pentru a trimite JWT
+        var response = await Http.PostAsJsonAsync(apiBase, req);
+        if (response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<StripeSessionResponse>();
+            if (result?.url != null)
+            {
+                Navigation.NavigateTo(result.url, forceLoad: true);
+            }
+        }
+    }
+    }
+
+
+
