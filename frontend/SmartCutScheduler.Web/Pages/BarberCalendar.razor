@@ -270,8 +270,25 @@
         if (slot.IsBooked)
             return;
 
-        _selectedSlot = DateTime.Parse(slot.Time);
-        _showServiceDialog = true;
+        // Check authentication (async workaround)
+        _ = CheckAuthAndNavigateToAppointment(slot);
+
+    }
+
+    private async Task CheckAuthAndNavigateToAppointment(TimeSlotDto slot)
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var slotDate = _selectedDate?.Date ?? DateTime.Today;
+        var slotTime = DateTime.Parse(slot.Time).TimeOfDay;
+        var fullDate = slotDate.Add(slotTime);
+        var appointmentUrl = $"/appointment/new?barberId={BarberId}&date={Uri.EscapeDataString(fullDate.ToString("o"))}";
+        if (!authState.User.Identity?.IsAuthenticated ?? true)
+        {
+            // Redirect to login with returnUrl to appointment page
+            Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(appointmentUrl)}");
+            return;
+        }
+        Navigation.NavigateTo(appointmentUrl);
     }
 
     private void CancelServiceSelection()
@@ -296,19 +313,9 @@
             return;
         }
 
-        var request = new CreateAppointmentRequest
-        {
-            BarberId = BarberId,
-            ServiceId = _selectedServiceId.Value,
-            ScheduledStartUtc = _selectedSlot.Value,
-            Notes = _notes
-        };
-
-        var success = await AppointmentService.CreateAppointmentAsync(request);
-        if (success)
-        {
-            _showServiceDialog = false;
-            Navigation.NavigateTo("/appointments");
-        }
+        // Redirecționează către pagina de finalizare programare cu parametri
+        var dateParam = _selectedSlot.Value.ToString("o");
+        Navigation.NavigateTo($"/appointment/new?barberId={BarberId}&date={Uri.EscapeDataString(dateParam)}&serviceId={_selectedServiceId}");
+        _showServiceDialog = false;
     }
 }

@@ -28,13 +28,17 @@ public class GetMyAppointmentsQueryHandler(
             .Select(a => new
             {
                 a.Id,
-                a.AppointmentDate,
-                a.StartTime,
-                a.EndTime,
-                a.Status,
-                a.Notes,
-                Barber = new { a.Barber.Id, a.Barber.Name, a.Barber.PhotoUrl },
-                Service = new { a.Service.Id, a.Service.Name, a.Service.DurationMinutes, a.Service.BasePrice }
+                a.UserId,
+                UserName = a.User != null ? a.User.Name : string.Empty,
+                a.BarberId,
+                BarberName = a.Barber != null ? a.Barber.Name : string.Empty,
+                a.ServiceId,
+                ServiceName = a.Service != null ? a.Service.Name : string.Empty,
+                AppointmentDate = a.AppointmentDate.ToString("yyyy-MM-dd"),
+                StartTime = a.StartTime.ToString("hh\\:mm"),
+                EndTime = a.EndTime.ToString("hh\\:mm"),
+                Status = a.Status.ToString(),
+                a.Notes
             })
             .ToList();
 
