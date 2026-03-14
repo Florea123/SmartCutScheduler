@@ -111,7 +111,9 @@ var app = builder.Build();
 // Middleware
 app.UseCors(corsPolicy);
 app.UseMiddleware<ValidationExceptionMiddleware>();
+
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 
 // Database Migration & Seeding
 using (var scope = app.Services.CreateScope())
@@ -163,6 +165,7 @@ app.UseAuthorization();
 
 // Map Endpoints
 
+
 app.MapAuthEndpoints();
 app.MapBarberEndpoints();
 app.MapBarberServicesEndpoints();
@@ -172,6 +175,7 @@ app.MapAvailabilityEndpoints();
 app.MapAppointmentEndpoints();
 app.MapPaymentEndpoints();
 app.MapStripeWebhookEndpoints();
+app.MapProfileEndpoints();
 
 app.Run();
 

@@ -75,10 +75,24 @@
                         </MudItem>
 
                         <MudItem xs="12">
-                            <MudTextField @bind-Value="_barberModel.PhotoUrl" 
-                                          Label="URL poză (opțional)" 
-                                          Variant="Variant.Outlined"
-                                          Class="mb-4" />
+                            <MudText Typo="Typo.body2" Class="mb-2">Poză de profil (obligatoriu):</MudText>
+                            <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px;">
+                                <InputFile OnChange="OnImageSelected" />
+                                <MudAvatar Size="Size.Large">
+                                    @if (!string.IsNullOrEmpty(_previewImageUrl))
+                                    {
+                                        <MudImage Src="@_previewImageUrl" Alt="preview" Style="width:80px;height:80px;object-fit:cover;border-radius:50%;" />
+                                    }
+                                    else
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Large" Style="font-size:80px;color:#ccc;" />
+                                    }
+                                </MudAvatar>
+                            </div>
+                            @if (!string.IsNullOrEmpty(_imageError))
+                            {
+                                <MudAlert Severity="Severity.Error">@_imageError</MudAlert>
+                            }
                         </MudItem>
 
                         <MudItem xs="12">
@@ -295,6 +309,9 @@
     private bool _submitting = false;
     private string? _errorMessage;
     private string? _successMessage;
+    private IBrowserFile? _selectedImage;
+    private string? _previewImageUrl;
+    private string? _imageError;
 
     // Users
     private List<UserDto> _users = new();
@@ -356,14 +373,33 @@
         _errorMessage = null;
         _successMessage = null;
 
+        // Validare poză obligatorie
+        if (_selectedImage == null)
+        {
+            _imageError = "Poza de profil este obligatorie!";
+            _submitting = false;
+            return;
+        }
+
         try
         {
-            var response = await ApiService.PostAsync("/api/barbers", _barberModel);
-            
+            var content = new MultipartFormDataContent();
+            content.Add(new StringContent(_barberModel.Name), "Name");
+            content.Add(new StringContent(_barberModel.Email), "Email");
+            content.Add(new StringContent(_barberModel.PhoneNumber), "PhoneNumber");
+            content.Add(new StringContent(_barberModel.Password), "Password");
+            content.Add(new StringContent(_barberModel.Description ?? string.Empty), "Description");
+            var stream = _selectedImage.OpenReadStream(2 * 1024 * 1024);
+            content.Add(new StreamContent(stream), "ProfileImage", _selectedImage.Name);
+
+            var response = await ApiService.PostMultipartAsync("/api/barbers", content);
+
             if (response.IsSuccessStatusCode)
             {
                 _successMessage = "Frizer adăugat cu succes!";
                 _barberModel = new();
+                _selectedImage = null;
+                _previewImageUrl = null;
                 await LoadBarbersAsync();
                 Snackbar.Add("Frizer adăugat cu succes!", Severity.Success);
             }
@@ -380,6 +416,40 @@
         finally
         {
             _submitting = false;
+        }
+    }
+
+    private async Task OnImageSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        _imageError = null;
+        if (file != null)
+        {
+            if (file.Size > 2 * 1024 * 1024)
+            {
+                _imageError = "Imaginea nu poate depăși 2MB.";
+                _selectedImage = null;
+                StateHasChanged();
+                return;
+            }
+            var allowed = new[] { ".jpg", ".jpeg", ".png" };
+            var ext = System.IO.Path.GetExtension(file.Name).ToLower();
+            if (!allowed.Contains(ext))
+            {
+                _imageError = "Doar imagini .jpg, .jpeg, .png sunt permise.";
+                _selectedImage = null;
+                StateHasChanged();
+                return;
+            }
+            _selectedImage = file;
+            // Generează preview imagine
+            using var stream = file.OpenReadStream(2 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var base64 = Convert.ToBase64String(ms.ToArray());
+            var mime = file.ContentType;
+            _previewImageUrl = $"data:{mime};base64,{base64}";
+            StateHasChanged();
         }
     }
 

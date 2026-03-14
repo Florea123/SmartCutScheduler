@@ -1,0 +1,152 @@
+@page "/settings"
+@using SmartCutScheduler.Web.Models
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Settings</PageTitle>
+
+<MudPaper Class="pa-6 mx-auto" MaxWidth="400px">
+    <MudText Typo="Typo.h5" Class="mb-4">Setări profil</MudText>
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else if (_user != null)
+    {
+        <MudAvatar Size="Size.Large" Class="mb-2">
+            @if (_previewImageUrl != null)
+            {
+                <MudImage Src="@_previewImageUrl" Alt="preview" Style="width:80px;height:80px;object-fit:cover;border-radius:50%;" />
+            }
+            else if (!string.IsNullOrWhiteSpace(_user?.ProfilePictureUrl))
+            {
+                <MudImage Src="@FixProfileImageUrl(_user.ProfilePictureUrl)" Alt="avatar" Style="width:80px;height:80px;object-fit:cover;border-radius:50%;" />
+            }
+        </MudAvatar>
+        <MudTextField @bind-Value="_user.Name" Label="Nume" Class="mb-2" />
+        <MudTextField @bind-Value="_user.PhoneNumber" Label="Număr de telefon" Class="mb-2" />
+        @if (_isBarber)
+        {
+            <MudTextField @bind-Value="_user.Description" Label="Descriere (frizer)" Class="mb-2" />
+        }
+        <MudText Typo="Typo.body2" Class="mb-2">Poza de profil:</MudText>
+        <InputFile OnChange="OnImageSelected" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveChanges" Class="mt-4">Salvează modificările</MudButton>
+    }
+</MudPaper>
+
+@code {
+    private UserDto? _user;
+    private bool _loading = true;
+    private bool _isBarber = false;
+    private IBrowserFile? _selectedImage;
+    private string? _imageError;
+    private string? _previewImageUrl;
+
+    [Inject] private IApiService ApiService { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _user = await AuthService.GetCurrentUserAsync();
+        _isBarber = _user?.Role == "Barber";
+        _loading = false;
+    }
+
+    private string? GetProfileImagePreview()
+    {
+        if (_previewImageUrl != null)
+            return _previewImageUrl;
+        return FixProfileImageUrl(_user?.ProfilePictureUrl);
+    }
+
+    private string? FixProfileImageUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return null;
+        if (url.StartsWith("/profile-images/"))
+        {
+            var baseUrl = GetApiBaseUrl();
+            return baseUrl.TrimEnd('/') + url;
+        }
+        return url;
+    }
+
+    private string GetApiBaseUrl()
+    {
+        // In Blazor WASM, config is in wwwroot/appsettings.json, but we know the default
+        return "http://localhost:5000";
+    }
+
+    private async Task OnImageSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        _imageError = null;
+        if (file != null)
+        {
+            if (file.Size > 2 * 1024 * 1024)
+            {
+                _imageError = "Imaginea nu poate depăși 2MB.";
+                _selectedImage = null;
+                StateHasChanged();
+                return;
+            }
+            var allowed = new[] { ".jpg", ".jpeg", ".png" };
+            var ext = System.IO.Path.GetExtension(file.Name).ToLower();
+            if (!allowed.Contains(ext))
+            {
+                _imageError = "Doar imagini .jpg, .jpeg, .png sunt permise.";
+                _selectedImage = null;
+                StateHasChanged();
+                return;
+            }
+            _selectedImage = file;
+            // Generează preview imagine
+            using var stream = file.OpenReadStream(2 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var base64 = Convert.ToBase64String(ms.ToArray());
+            var mime = file.ContentType;
+            _previewImageUrl = $"data:{mime};base64,{base64}";
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        if (_user == null) return;
+
+        if (string.IsNullOrWhiteSpace(_user.Name))
+        {
+            Snackbar.Add("Numele este obligatoriu.", Severity.Error);
+            return;
+        }
+        if (!string.IsNullOrWhiteSpace(_user.PhoneNumber) && _user.PhoneNumber.Length < 8)
+        {
+            Snackbar.Add("Numărul de telefon trebuie să aibă minim 8 cifre.", Severity.Error);
+            return;
+        }
+
+        var content = new MultipartFormDataContent();
+        content.Add(new StringContent(_user.Id.ToString()), "UserId");
+        content.Add(new StringContent(_user.Name), "Name");
+        content.Add(new StringContent(_user.PhoneNumber ?? string.Empty), "PhoneNumber");
+        // Trimite Description mereu, chiar și pentru client (string gol dacă nu e frizer)
+        content.Add(new StringContent(_user.Description ?? string.Empty), "Description");
+        if (_selectedImage != null)
+        {
+            var stream = _selectedImage.OpenReadStream(2 * 1024 * 1024);
+            content.Add(new StreamContent(stream), "ProfileImage", _selectedImage.Name);
+        }
+
+        var response = await ApiService.PutMultipartAsync("/api/profile", content);
+        if (response.IsSuccessStatusCode)
+        {
+            Snackbar.Add("Modificările au fost salvate!", Severity.Success);
+            // Optionally reload user data
+        }
+        else
+        {
+            Snackbar.Add("Eroare la salvare. Încearcă din nou!", Severity.Error);
+        }
+    }
+}

@@ -23,7 +23,7 @@
     }
     else if (_appointments.Any())
     {
-        <MudTable Items="@_appointments" Hover="true" Breakpoint="Breakpoint.Sm">
+        <MudTable Items="@_appointmentsWithAutoCompleted" Hover="true" Breakpoint="Breakpoint.Sm">
             <HeaderContent>
                 <MudTh>Frizer</MudTh>
                 <MudTh>Serviciu</MudTh>
@@ -67,6 +67,36 @@
 @code {
     private List<AppointmentDto> _appointments = new();
     private bool _loading = true;
+
+    private List<AppointmentDto> _appointmentsWithAutoCompleted => _appointments.Select(a =>
+    {
+        if ((a.Status == "Scheduled" || a.Status == "Confirmed") && IsInPast(a.AppointmentDate, a.StartTime))
+            return new AppointmentDto
+            {
+                Id = a.Id,
+                UserId = a.UserId,
+                UserName = a.UserName,
+                BarberId = a.BarberId,
+                BarberName = a.BarberName,
+                ServiceId = a.ServiceId,
+                ServiceName = a.ServiceName,
+                AppointmentDate = a.AppointmentDate,
+                StartTime = a.StartTime,
+                EndTime = a.EndTime,
+                Status = "Completed",
+                Notes = a.Notes
+            };
+        return a;
+    }).ToList();
+
+    private bool IsInPast(string date, string time)
+    {
+        if (DateTime.TryParseExact(date + " " + time, "yyyy-MM-dd HH:mm", null, System.Globalization.DateTimeStyles.None, out var dt))
+        {
+            return dt < DateTime.Now;
+        }
+        return false;
+    }
 
     protected override async Task OnInitializedAsync()
     {

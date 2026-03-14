@@ -32,10 +32,11 @@ public class CreateBarberCommandHandler(
             PhoneNumber = request.PhoneNumber,
             Role = UserRole.Barber,
             CreatedAtUtc = DateTime.UtcNow,
-            UpdatedAtUtc = DateTime.UtcNow
+            UpdatedAtUtc = DateTime.UtcNow,
+            ProfilePictureUrl = request.PhotoUrl
         };
         user.PasswordHash = passwordHasher.HashPassword(user, request.Password);
-        
+
         await unitOfWork.Users.AddAsync(user, cancellationToken);
 
         // Create Barber entity with same ID as User

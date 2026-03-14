@@ -1,4 +1,15 @@
 services:
+  frontend:
+    build:
+      context: ./frontend/SmartCutScheduler.Web
+      dockerfile: Dockerfile
+    container_name: smartcut_frontend
+    ports:
+      - "5177:80"
+    depends_on:
+      - api
+    networks:
+      - smartcut_network
   postgres:
     image: postgres:14-alpine
     container_name: smartcut_postgres
@@ -31,6 +42,8 @@ services:
       NPGSQL_ENABLE_LEGACY_TIMESTAMP_BEHAVIOR: "true"
     ports:
       - "5000:5000"
+    volumes:
+      - ./backend/src/SmartCutScheduler.Api/wwwroot/profile-images:/app/wwwroot/profile-images
     depends_on:
       postgres:
         condition: service_healthy

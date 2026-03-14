@@ -31,4 +31,6 @@ public class UserDto
     public string? PhoneNumber { get; set; }
     public string Role { get; set; } = string.Empty;
     public DateTime CreatedAtUtc { get; set; }
+    public string? ProfilePictureUrl { get; set; }
+    public string? Description { get; set; }
 }

@@ -1,3 +1,4 @@
+// ...existing code...
 using System.Net.Http.Json;
 using SmartCutScheduler.Web.Models;
 
@@ -6,6 +7,7 @@ namespace SmartCutScheduler.Web.Services;
 public interface IAppointmentService
 {
     Task<List<AppointmentDto>> GetMyAppointmentsAsync();
+    Task<List<AppointmentDto>> GetBarberAppointmentsAsync();
     Task<List<DateTime>> GetAvailableSlotsAsync(Guid barberId, Guid serviceId, DateTime date);
     Task<List<TimeSlotDto>> GetDaySlotsAsync(Guid barberId, DateTime date);
     Task<bool> CreateAppointmentAsync(CreateAppointmentRequest request);
@@ -71,6 +73,16 @@ public class AppointmentService : IAppointmentService
     {
         var response = await _api.PutAsync($"/api/appointments/{appointmentId}/cancel", new { });
         return response.IsSuccessStatusCode;
+    }
+
+    public async Task<List<AppointmentDto>> GetBarberAppointmentsAsync()
+    {
+        var response = await _api.GetAsync("/api/appointments/barber");
+        if (response.IsSuccessStatusCode)
+        {
+            return await response.Content.ReadFromJsonAsync<List<AppointmentDto>>() ?? new();
+        }
+        return new();
     }
 }
 

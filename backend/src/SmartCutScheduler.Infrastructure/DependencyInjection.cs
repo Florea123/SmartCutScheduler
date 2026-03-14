@@ -48,6 +48,9 @@ public static class DependencyInjection
         services.AddSingleton<PasswordHasher<User>>();
         services.AddSingleton<IPasswordService, PasswordService>();
 
+        // File Storage
+        services.AddScoped<IFileStorageService, FileStorage.LocalFileStorageService>();
+
         return services;
     }
 }

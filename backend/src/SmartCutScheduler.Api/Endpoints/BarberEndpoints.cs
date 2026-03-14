@@ -17,10 +17,35 @@ public static class BarberEndpoints
         group.MapGet("", async (IMediator mediator) =>
             await mediator.Send(new GetAllBarbersQuery()));
 
-        group.MapPost("", async (CreateBarberCommand cmd, IMediator mediator) =>
+        group.MapPost("", async (HttpRequest request, IMediator mediator, SmartCutScheduler.Application.Common.Interfaces.IFileStorageService fileStorageService) =>
         {
             try
             {
+                if (!request.HasFormContentType)
+                    return Results.BadRequest(new { message = "Conținut invalid (așteptat multipart/form-data)" });
+
+                var form = await request.ReadFormAsync();
+                var name = form["Name"].ToString();
+                var email = form["Email"].ToString();
+                var phone = form["PhoneNumber"].ToString();
+                var password = form["Password"].ToString();
+                var description = form["Description"].ToString();
+                var file = form.Files["ProfileImage"];
+                if (file == null || file.Length == 0)
+                    return Results.BadRequest(new { message = "Poza de profil este obligatorie!" });
+
+                // Creează un ID temporar pentru imagine
+                var tempId = Guid.NewGuid();
+                var imageUrl = await fileStorageService.SaveProfileImageAsync(tempId, file, default);
+
+                var cmd = new CreateBarberCommand(
+                    name,
+                    email,
+                    phone,
+                    password,
+                    description,
+                    imageUrl
+                );
                 var barberId = await mediator.Send(cmd);
                 return Results.Ok(new { id = barberId, message = "Frizer creat cu succes!" });
             }
