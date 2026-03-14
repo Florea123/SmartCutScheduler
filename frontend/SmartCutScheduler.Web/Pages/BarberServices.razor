@@ -90,7 +90,10 @@
                                  Variant="Variant.Outlined"
                                  InputType="InputType.Number"
                                  Placeholder="ex: 30"
-                                 Class="mb-3" />
+                                 Class="mb-3"
+                                 Min="1"
+                                 Max="30"
+                                 HelperText="Durata maximă este 30 de minute" />
 
                     <MudTextField @bind-Value="_newServicePrice" 
                                  Label="Preț (RON) *" 
@@ -103,7 +106,7 @@
                     <MudButton Variant="Variant.Filled" 
                               Color="Color.Primary" 
                               FullWidth="true"
-                              Disabled="@(_submitting || string.IsNullOrWhiteSpace(_newServiceName) || _newServiceDuration <= 0 || _newServicePrice <= 0)"
+                              Disabled="@(_submitting || string.IsNullOrWhiteSpace(_newServiceName) || _newServiceDuration <= 0 || _newServiceDuration > 30 || _newServicePrice <= 0)"
                               OnClick="HandleCreateServiceAsync">
                         @if (_submitting)
                         {

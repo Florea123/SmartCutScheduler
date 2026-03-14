@@ -10,9 +10,11 @@ public interface IApiService
     Task<HttpResponseMessage> PostAsync<T>(string endpoint, T data);
     Task<HttpResponseMessage> PutAsync<T>(string endpoint, T data);
     Task<HttpResponseMessage> DeleteAsync(string endpoint);
+    Task<HttpResponseMessage> PutMultipartAsync(string endpoint, MultipartFormDataContent content);
+    Task<HttpResponseMessage> PostMultipartAsync(string endpoint, MultipartFormDataContent content);
 }
 
-public class ApiService : IApiService
+public partial class ApiService : IApiService
 {
     private readonly HttpClient _http;
     private readonly ILocalStorageService _localStorage;
@@ -55,4 +57,11 @@ public class ApiService : IApiService
         await AddAuthHeaderAsync();
         return await _http.DeleteAsync(endpoint);
     }
+
+    public async Task<HttpResponseMessage> PostMultipartAsync(string endpoint, MultipartFormDataContent content)
+    {
+        await AddAuthHeaderAsync();
+        return await _http.PostAsync(endpoint, content);
+    }
+
 }

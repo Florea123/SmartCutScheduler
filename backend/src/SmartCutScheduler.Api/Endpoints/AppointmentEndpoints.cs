@@ -16,8 +16,12 @@ public static class AppointmentEndpoints
         group.MapPost("", async (CreateAppointmentCommand cmd, IMediator mediator) =>
             await mediator.Send(cmd));
 
+
         group.MapGet("/my", async (IMediator mediator) =>
             await mediator.Send(new GetMyAppointmentsQuery()));
+
+        group.MapGet("/barber", async (IMediator mediator) =>
+            await mediator.Send(new GetBarberAppointmentsQuery()));
 
         group.MapPut("/{id:guid}/cancel", async (Guid id, IMediator mediator) =>
             await mediator.Send(new CancelAppointmentCommand(id)));

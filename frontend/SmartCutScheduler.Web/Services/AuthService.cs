@@ -74,7 +74,9 @@ public class AuthService : IAuthService
         if (string.IsNullOrEmpty(token))
             return null;
 
-        // TODO: Decode JWT or call API to get user info
-        return null;
+        var response = await _api.GetAsync("/api/profile");
+        if (!response.IsSuccessStatusCode)
+            return null;
+        return await response.Content.ReadFromJsonAsync<UserDto>();
     }
 }

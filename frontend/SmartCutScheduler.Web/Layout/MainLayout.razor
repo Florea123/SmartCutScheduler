@@ -1,6 +1,7 @@
 ﻿@inherits LayoutComponentBase
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
 
 <MudLayout>
     <MudAppBar Elevation="1">
@@ -8,8 +9,21 @@
         <MudText Typo="Typo.h6">SmartCut Scheduler</MudText>
         <MudSpacer />
         <AuthorizeView>
-            <Authorized>
-                <MudText Typo="Typo.body2" Class="mr-4">@context.User.Identity?.Name</MudText>
+            <Authorized Context="authContext">
+                <AuthorizeView Roles="Customer,Barber">
+                    <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" OnClick="GoToSettings" Class="mr-2" />
+                </AuthorizeView>
+                @if (!string.IsNullOrWhiteSpace(_profileImageUrl))
+                {
+                    <MudAvatar Size="Size.Medium" Class="mr-2">
+                        <MudImage Src="@_profileImageUrl" Alt="avatar" Style="width:40px;height:40px;object-fit:cover;border-radius:50%;" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.body2" Class="mr-4">@_userName</MudText>
+                }
+                else if (!string.IsNullOrWhiteSpace(_userName))
+                {
+                    <MudText Typo="Typo.body2" Class="mr-4">@_userName</MudText>
+                }
                 <MudButton Variant="Variant.Text" Color="Color.Inherit" OnClick="HandleLogoutAsync">Logout</MudButton>
             </Authorized>
             <NotAuthorized>
@@ -26,12 +40,15 @@
             <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Acasă</MudNavLink>
             <AuthorizeView>
                 <Authorized Context="authNav">
-                    <MudNavLink Href="/appointments" Icon="@Icons.Material.Filled.CalendarMonth">Programările Mele</MudNavLink>
-                    <AuthorizeView Roles="Admin" Context="adminNav">
+                    <AuthorizeView Roles="Admin">
                         <MudNavLink Href="/admin" Icon="@Icons.Material.Filled.AdminPanelSettings">Admin</MudNavLink>
                     </AuthorizeView>
-                    <AuthorizeView Roles="Barber" Context="barberNav">
+                    <AuthorizeView Roles="Barber">
                         <MudNavLink Href="/barber-services" Icon="@Icons.Material.Filled.ContentCut">Serviciile Mele</MudNavLink>
+                        <MudNavLink Href="/barber-appointments" Icon="@Icons.Material.Filled.CalendarMonth">Programările la mine</MudNavLink>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="Customer">
+                        <MudNavLink Href="/appointments" Icon="@Icons.Material.Filled.CalendarMonth">Programările Mele</MudNavLink>
                     </AuthorizeView>
                 </Authorized>
             </AuthorizeView>
@@ -45,6 +62,67 @@
 
 @code {
     private bool _drawerOpen = true;
+    private string? _profileImageUrl;
+    private string? _apiBaseUrl;
+    private string? _userName;
+    private string? _debugUserRaw;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserAsync();
+
+        // Get API base URL from config
+        var config = await GetApiBaseUrlAsync();
+        _apiBaseUrl = config;
+
+        // Subscribe to authentication state changes
+        AuthStateProvider.AuthenticationStateChanged += OnAuthStateChanged;
+    }
+
+    private async void OnAuthStateChanged(Task<AuthenticationState> task)
+    {
+        await LoadUserAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadUserAsync()
+    {
+        var user = await AuthService.GetCurrentUserAsync();
+        _profileImageUrl = FixProfileImageUrl(user?.ProfilePictureUrl);
+        _userName = user?.Name;
+        _debugUserRaw = user != null ? System.Text.Json.JsonSerializer.Serialize(user) : null;
+    }
+    public void Dispose()
+    {
+        if (AuthStateProvider != null)
+            AuthStateProvider.AuthenticationStateChanged -= OnAuthStateChanged;
+    }
+
+    private string? FixProfileImageUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return null;
+        if (url.StartsWith("/profile-images/"))
+        {
+            // Use the same base URL as HttpClient
+            var baseUrl = GetApiBaseUrlAsync().GetAwaiter().GetResult();
+            return baseUrl.TrimEnd('/') + url;
+        }
+        return url;
+    }
+
+    private async Task<string> GetApiBaseUrlAsync()
+    {
+        // Try to get from window.__env or fallback to default
+        // In Blazor WASM, config is in wwwroot/appsettings.json
+        try
+        {
+            using var http = new HttpClient();
+            var json = await http.GetStringAsync("appsettings.json");
+            var apiBase = System.Text.Json.JsonDocument.Parse(json).RootElement.GetProperty("ApiBaseUrl").GetString();
+            return apiBase ?? "http://localhost:5000";
+        }
+        catch { return "http://localhost:5000"; }
+    }
 
     private void ToggleDrawer()
     {
@@ -55,5 +133,10 @@
     {
         await AuthService.LogoutAsync();
         Navigation.NavigateTo("/", true);
+    }
+
+    private void GoToSettings()
+    {
+        Navigation.NavigateTo("/settings");
     }
 }

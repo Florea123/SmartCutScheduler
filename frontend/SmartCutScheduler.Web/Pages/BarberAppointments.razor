@@ -1,0 +1,170 @@
+@page "/barber-appointments"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Barber")]
+@inject IAppointmentService AppointmentService
+@inject NavigationManager Navigation
+
+<PageTitle>Programările la mine</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
+    <MudText Typo="Typo.h4" Class="mb-4">Programările la mine</MudText>
+
+
+    <div class="d-flex align-items-center mb-2">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ToggleCalendar" Class="me-3">Selectează ziua</MudButton>
+        <MudText Typo="Typo.subtitle1" Class="selected-date-label">
+            Ziua selectată: <b>@_selectedDate.ToString("dddd, dd MMMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("ro-RO"))</b>
+        </MudText>
+    </div>
+    @if (_showCalendar)
+    {
+        <MudDatePicker
+            PickerVariant="PickerVariant.Static"
+            Date="_selectedDate"
+            DateChanged="@OnDatePicked"
+            DateFormat="dd/MM/yyyy"
+            Class="mb-4"
+            Label="Alege ziua" />
+    }
+<style>
+    .calendar-btn input {
+        opacity: 0 !important;
+        width: 36px !important;
+        min-width: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        cursor: pointer !important;
+        position: absolute;
+        left: 0;
+    }
+    .calendar-btn .mud-input-adornment {
+        margin-left: 0 !important;
+    }
+    .calendar-btn .mud-input-root {
+        min-width: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: none !important;
+    }
+</style>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (_appointments.Any(a => IsSameDay(a.AppointmentDate, _selectedDate)))
+    {
+        <MudTable Items="@_appointmentsFiltered" Hover="true" Breakpoint="Breakpoint.Sm">
+            <HeaderContent>
+                <MudTh>Client</MudTh>
+                <MudTh>Serviciu</MudTh>
+                <MudTh>Data</MudTh>
+                <MudTh>Ora</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Note</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Client">@context.UserName</MudTd>
+                <MudTd DataLabel="Serviciu">@context.ServiceName</MudTd>
+                <MudTd DataLabel="Data">@DateTime.ParseExact(context.AppointmentDate, "yyyy-MM-dd", null).ToString("dd/MM/yyyy")</MudTd>
+                <MudTd DataLabel="Ora">@context.StartTime</MudTd>
+                <MudTd DataLabel="Status">
+                    <MudChip T="string" Color="@GetStatusColor(context.Status)" Size="Size.Small">
+                        @context.Status
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Note">@context.Notes</MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Info">
+            Nu există programări la tine în ziua selectată.
+        </MudAlert>
+    }
+</MudContainer>
+
+@code {
+    private List<AppointmentDto> _appointments = new();
+    private List<AppointmentDto> _appointmentsFiltered => _appointments
+        .Where(a => IsSameDay(a.AppointmentDate, _selectedDate))
+        .Where(a => a.Status != "Cancelled")
+        .Where(a => !IsInPast(a.AppointmentDate, a.StartTime))
+        .OrderBy(a => a.StartTime)
+        .ToList();
+
+    private bool IsInPast(string date, string time)
+    {
+        if (DateTime.TryParseExact(date + " " + time, "yyyy-MM-dd HH:mm", null, System.Globalization.DateTimeStyles.None, out var dt))
+        {
+            return dt < DateTime.Now;
+        }
+        return false;
+    }
+    private bool _loading = true;
+    private DateTime _selectedDate = DateTime.Today;
+    private bool _showCalendar = false;
+
+    private void ToggleCalendar()
+    {
+        _showCalendar = !_showCalendar;
+    }
+
+    private async Task OnDatePicked(DateTime? date)
+    {
+        if (date.HasValue)
+        {
+            _selectedDate = date.Value;
+            _showCalendar = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OnDateChanged(DateTime? date)
+    {
+        if (date.HasValue)
+        {
+            _selectedDate = date.Value;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAppointmentsAsync();
+    }
+
+    private async Task LoadAppointmentsAsync()
+    {
+        _loading = true;
+        try
+        {
+            _appointments = await AppointmentService.GetBarberAppointmentsAsync();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private bool IsSameDay(string appointmentDate, DateTime selectedDate)
+    {
+        if (DateTime.TryParseExact(appointmentDate, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var date))
+        {
+            return date.Date == selectedDate.Date;
+        }
+        return false;
+    }
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "Scheduled" => Color.Info,
+        "Confirmed" => Color.Success,
+        "Completed" => Color.Default,
+        "Cancelled" => Color.Error,
+        _ => Color.Default
+    };
+}
