@@ -1,4 +1,4 @@
-@using MudBlazor
+﻿@using MudBlazor
 @page "/appointment/new"
 @using SmartCutScheduler.Web.Models
 @using Microsoft.AspNetCore.WebUtilities
@@ -8,28 +8,67 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject HttpClient Http
 
-<PageTitle>Finalizează programarea</PageTitle>
+<PageTitle>Finalizeaza programarea – SmartCut Scheduler</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8">
-    <MudText Typo="Typo.h5" Class="mb-4">Finalizează programarea</MudText>
-    <MudPaper Class="pa-4 mb-4">
-        <MudText Typo="Typo.subtitle1">Frizer: @BarberName</MudText>
-        <MudText Typo="Typo.subtitle1">Data: @(Date.HasValue ? Date.Value.ToString("dd MMM yyyy") : "-")</MudText>
-        <MudText Typo="Typo.subtitle1">Ora: @(Date.HasValue ? Date.Value.ToString("HH:mm") : "-")</MudText>
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-10">
+    <MudStack Spacing="0" Class="mb-6">
+        <MudText Typo="Typo.h4" Style="font-weight:800; color:#f0f4f8;">Finalizeaza programarea</MudText>
+        <MudText Typo="Typo.body2" Style="color:#8fa3ba;">Verifica detaliile si alege serviciul dorit</MudText>
+    </MudStack>
+
+    @* ── Booking summary card ── *@
+    <MudPaper Elevation="0" Class="pa-5 mb-5"
+              Style="background:linear-gradient(135deg,#1a2e42,#0d1b2a); border:1px solid rgba(245,166,35,0.3); border-radius:16px;">
+        <MudStack Spacing="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.ContentCut" Style="color:#F5A623;" />
+                <div>
+                    <MudText Typo="Typo.caption" Style="color:#8fa3ba; text-transform:uppercase; letter-spacing:1px; font-size:0.7rem;">Frizer</MudText>
+                    <MudText Style="font-weight:700; color:#f0f4f8;">@BarberName</MudText>
+                </div>
+            </MudStack>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Style="color:#F5A623;" />
+                <div>
+                    <MudText Typo="Typo.caption" Style="color:#8fa3ba; text-transform:uppercase; letter-spacing:1px; font-size:0.7rem;">Data si ora</MudText>
+                    <MudText Style="font-weight:700; color:#f0f4f8;">@(Date.HasValue ? Date.Value.ToString("dd MMM yyyy, HH:mm") : "-")</MudText>
+                </div>
+            </MudStack>
+        </MudStack>
     </MudPaper>
-    <MudSelect T="Guid?" @bind-Value="SelectedServiceId" Label="Alege serviciul" Variant="Variant.Outlined" Required="true">
-        @foreach (var service in Services)
-        {
-            <MudSelectItem T="Guid?" Value="service.Id">
-                @service.Name - @service.Price Lei (@service.DurationMinutes min)
-            </MudSelectItem>
-        }
-    </MudSelect>
-    <MudTextField @bind-Value="Note" Label="Note (opțional)" Variant="Variant.Outlined" Class="mt-4" />
-    <MudText Typo="Typo.h6" Class="mt-4">Total: <b>@SelectedServicePrice.ToString("0.00") Lei</b></MudText>
-    <MudButton Disabled="@(!SelectedServiceId.HasValue)" Color="Color.Primary" Variant="Variant.Filled" Class="mt-4" OnClick="StartStripePayment">
-        Plătește cu cardul
-    </MudButton>
+
+    @* ── Service picker ── *@
+    <MudPaper Elevation="0" Class="pa-5 mb-5"
+              Style="background:#132236; border:1px solid #1e3a56; border-radius:16px;">
+        <MudText Typo="Typo.subtitle1" Style="font-weight:700; color:#f0f4f8; margin-bottom:16px;">Alege serviciul</MudText>
+        <MudSelect T="Guid?" @bind-Value="SelectedServiceId" Label="Serviciu" Variant="Variant.Outlined" Required="true">
+            @foreach (var service in Services)
+            {
+                <MudSelectItem T="Guid?" Value="service.Id">
+                    @service.Name — @service.Price Lei (@service.DurationMinutes min)
+                </MudSelectItem>
+            }
+        </MudSelect>
+        <MudTextField @bind-Value="Note" Label="Note (optional)" Variant="Variant.Outlined" Class="mt-4"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Notes" />
+    </MudPaper>
+
+    @* ── Total + Pay ── *@
+    <MudPaper Elevation="0" Class="pa-5"
+              Style="background:#132236; border:1px solid #1e3a56; border-radius:16px;">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+            <MudText Style="color:#8fa3ba; font-weight:600;">Total de plata</MudText>
+            <MudText Style="font-size:1.8rem; font-weight:800; color:#F5A623;">
+                @SelectedServicePrice.ToString("0.00") Lei
+            </MudText>
+        </MudStack>
+        <MudButton Disabled="@(!SelectedServiceId.HasValue)" Variant="Variant.Filled" Color="Color.Primary"
+                   FullWidth="true" Size="Size.Large" OnClick="StartStripePayment"
+                   Style="font-weight:700; color:#000; border-radius:50px; font-size:1rem;">
+            <MudIcon Icon="@Icons.Material.Filled.CreditCard" Class="mr-2" />
+            Plateste cu cardul
+        </MudButton>
+    </MudPaper>
 </MudContainer>
 
 @code {
@@ -45,7 +84,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // Parse query string if parameters are not set (for direct navigation)
         var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
         var query = QueryHelpers.ParseQuery(uri.Query);
         if (!BarberId.HasValue && query.TryGetValue("barberId", out var barberIdStr))
@@ -58,49 +96,27 @@
         if (BarberId.HasValue)
         {
             var barber = await BarberService.GetBarberByIdAsync(BarberId.Value);
-            if (barber != null)
-            {
-                BarberName = barber.Name;
-                Services = barber.Services;
-            }
+            if (barber != null) { BarberName = barber.Name; Services = barber.Services; }
         }
-        if (ServiceId.HasValue)
-            SelectedServiceId = ServiceId;
+        if (ServiceId.HasValue) SelectedServiceId = ServiceId;
     }
 
     private async Task StartStripePayment()
     {
-        if (!SelectedServiceId.HasValue || !BarberId.HasValue || !Date.HasValue)
-            return;
-
+        if (!SelectedServiceId.HasValue || !BarberId.HasValue || !Date.HasValue) return;
         var service = Services.FirstOrDefault(s => s.Id == SelectedServiceId);
-        if (service == null)
-            return;
+        if (service == null) return;
 
-        var apiBase = "/api/payments/create-checkout-session";
         var req = new {
-            BarberId = BarberId.Value,
-            ServiceId = SelectedServiceId.Value,
-            Date = Date.Value,
-            ServiceName = service.Name,
-            Amount = service.Price,
-            Notes = Note,
-            SuccessUrl = "http://localhost:5177/",
-            CancelUrl = "http://localhost:5177/"
+            BarberId = BarberId.Value, ServiceId = SelectedServiceId.Value, Date = Date.Value,
+            ServiceName = service.Name, Amount = service.Price, Notes = Note,
+            SuccessUrl = "http://localhost:5177/", CancelUrl = "http://localhost:5177/"
         };
-
-        // Folosește HttpClient injectat pentru a trimite JWT
-        var response = await Http.PostAsJsonAsync(apiBase, req);
+        var response = await Http.PostAsJsonAsync("/api/payments/create-checkout-session", req);
         if (response.IsSuccessStatusCode)
         {
             var result = await response.Content.ReadFromJsonAsync<StripeSessionResponse>();
-            if (result?.url != null)
-            {
-                Navigation.NavigateTo(result.url, forceLoad: true);
-            }
+            if (result?.url != null) Navigation.NavigateTo(result.url, forceLoad: true);
         }
     }
-    }
-
-
-
+}

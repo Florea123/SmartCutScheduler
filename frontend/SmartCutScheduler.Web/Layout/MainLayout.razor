@@ -4,78 +4,107 @@
 @inject AuthenticationStateProvider AuthStateProvider
 
 <MudLayout>
-    <MudAppBar Elevation="1">
+    <MudAppBar Elevation="0" Style="background:#0d1b2a; border-bottom:1px solid #1e3a56;">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
-        <MudText Typo="Typo.h6">SmartCut Scheduler</MudText>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="ml-1">
+            <MudText Style="font-size:1.3rem; color:#F5A623;">✂</MudText>
+            <MudText Typo="Typo.h6" Style="font-weight:800; color:#f0f4f8; letter-spacing:0.3px;">
+                SmartCut<span style="color:#F5A623;">Scheduler</span>
+            </MudText>
+        </MudStack>
         <MudSpacer />
         <AuthorizeView>
             <Authorized Context="authContext">
                 <AuthorizeView Roles="Customer,Barber">
-                    <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" OnClick="GoToSettings" Class="mr-2" />
+                    <MudTooltip Text="Setari profil">
+                        <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" OnClick="GoToSettings" Style="color:#8fa3ba;" />
+                    </MudTooltip>
                 </AuthorizeView>
-                @if (!string.IsNullOrWhiteSpace(_profileImageUrl))
-                {
-                    <MudAvatar Size="Size.Medium" Class="mr-2">
-                        <MudImage Src="@_profileImageUrl" Alt="avatar" Style="width:40px;height:40px;object-fit:cover;border-radius:50%;" />
-                    </MudAvatar>
-                    <MudText Typo="Typo.body2" Class="mr-4">@_userName</MudText>
-                }
-                else if (!string.IsNullOrWhiteSpace(_userName))
-                {
-                    <MudText Typo="Typo.body2" Class="mr-4">@_userName</MudText>
-                }
-                <MudButton Variant="Variant.Text" Color="Color.Inherit" OnClick="HandleLogoutAsync">Logout</MudButton>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mr-2">
+                    @if (!string.IsNullOrWhiteSpace(_profileImageUrl))
+                    {
+                        <MudAvatar Size="Size.Small" Style="border:2px solid #F5A623;">
+                            <MudImage Src="@_profileImageUrl" Alt="avatar" Style="width:100%;height:100%;object-fit:cover;" />
+                        </MudAvatar>
+                    }
+                    else
+                    {
+                        <MudAvatar Size="Size.Small" Style="background:linear-gradient(135deg,#F5A623,#FF8C00); color:#000; font-weight:700;">
+                            @(_userName?.Length > 0 ? _userName[0].ToString().ToUpper() : "U")
+                        </MudAvatar>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_userName))
+                    {
+                        <MudText Typo="Typo.body2" Style="color:#f0f4f8; font-weight:600;">@_userName</MudText>
+                    }
+                </MudStack>
+                <MudButton Variant="Variant.Outlined" Style="border-color:#2a4a6a; color:#8fa3ba; font-size:0.8rem;" Size="Size.Small" OnClick="HandleLogoutAsync">Logout</MudButton>
             </Authorized>
             <NotAuthorized>
-                <MudButton Href="/login" Variant="Variant.Text" Color="Color.Inherit">Login</MudButton>
+                <MudButton Href="/login" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" Style="font-weight:700; color:#000;">Login</MudButton>
             </NotAuthorized>
         </AuthorizeView>
     </MudAppBar>
 
-    <MudDrawer @bind-Open="_drawerOpen" Elevation="2">
-        <MudDrawerHeader>
-            <MudText Typo="Typo.h6">Meniu</MudText>
-        </MudDrawerHeader>
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="0" Style="background:#0d1b2a; border-right:1px solid #1e3a56;">
+        <div style="padding:20px 20px 8px 20px; border-bottom:1px solid #1e3a56; margin-bottom:8px;">
+            <MudText Style="font-size:0.75rem; font-weight:700; color:#F5A623; letter-spacing:2px; text-transform:uppercase;">Navigare</MudText>
+        </div>
         <MudNavMenu>
-            <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Acasă</MudNavLink>
+            <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home" IconColor="Color.Inherit">Acasa</MudNavLink>
             <AuthorizeView>
                 <Authorized Context="authNav">
                     <AuthorizeView Roles="Admin">
-                        <MudNavLink Href="/admin" Icon="@Icons.Material.Filled.AdminPanelSettings">Admin</MudNavLink>
+                        <MudNavLink Href="/admin" Icon="@Icons.Material.Filled.AdminPanelSettings" IconColor="Color.Inherit">Admin Panel</MudNavLink>
                     </AuthorizeView>
                     <AuthorizeView Roles="Barber">
-                        <MudNavLink Href="/barber-services" Icon="@Icons.Material.Filled.ContentCut">Serviciile Mele</MudNavLink>
-                        <MudNavLink Href="/barber-appointments" Icon="@Icons.Material.Filled.CalendarMonth">Programările la mine</MudNavLink>
+                        <MudNavLink Href="/barber-services" Icon="@Icons.Material.Filled.ContentCut" IconColor="Color.Inherit">Serviciile Mele</MudNavLink>
+                        <MudNavLink Href="/barber-appointments" Icon="@Icons.Material.Filled.CalendarMonth" IconColor="Color.Inherit">Programarile la mine</MudNavLink>
                     </AuthorizeView>
                     <AuthorizeView Roles="Customer">
-                        <MudNavLink Href="/appointments" Icon="@Icons.Material.Filled.CalendarMonth">Programările Mele</MudNavLink>
+                        <MudNavLink Href="/appointments" Icon="@Icons.Material.Filled.CalendarMonth" IconColor="Color.Inherit">Programarile Mele</MudNavLink>
                     </AuthorizeView>
                 </Authorized>
             </AuthorizeView>
         </MudNavMenu>
+        <div style="position:absolute; bottom:16px; left:0; right:0; text-align:center;">
+            <MudText Typo="Typo.caption" Style="color:#3a5a7a;">© 2026 SmartCut Scheduler</MudText>
+        </div>
     </MudDrawer>
 
-    <MudMainContent>
+    <MudMainContent Style="background:#0b1622;">
         @Body
     </MudMainContent>
 </MudLayout>
 
+<style>
+    .mud-nav-link {
+        border-radius: 10px !important;
+        margin: 2px 10px !important;
+        padding: 10px 14px !important;
+        color: #8fa3ba !important;
+        font-weight: 500 !important;
+        transition: all 0.2s ease !important;
+    }
+    .mud-nav-link:hover {
+        background: rgba(245,166,35,0.1) !important;
+        color: #F5A623 !important;
+    }
+    .mud-nav-link.active {
+        background: rgba(245,166,35,0.15) !important;
+        color: #F5A623 !important;
+        font-weight: 700 !important;
+    }
+</style>
+
 @code {
     private bool _drawerOpen = true;
     private string? _profileImageUrl;
-    private string? _apiBaseUrl;
     private string? _userName;
-    private string? _debugUserRaw;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadUserAsync();
-
-        // Get API base URL from config
-        var config = await GetApiBaseUrlAsync();
-        _apiBaseUrl = config;
-
-        // Subscribe to authentication state changes
         AuthStateProvider.AuthenticationStateChanged += OnAuthStateChanged;
     }
 
@@ -90,8 +119,8 @@
         var user = await AuthService.GetCurrentUserAsync();
         _profileImageUrl = FixProfileImageUrl(user?.ProfilePictureUrl);
         _userName = user?.Name;
-        _debugUserRaw = user != null ? System.Text.Json.JsonSerializer.Serialize(user) : null;
     }
+
     public void Dispose()
     {
         if (AuthStateProvider != null)
@@ -102,41 +131,17 @@
     {
         if (string.IsNullOrWhiteSpace(url)) return null;
         if (url.StartsWith("/profile-images/"))
-        {
-            // Use the same base URL as HttpClient
-            var baseUrl = GetApiBaseUrlAsync().GetAwaiter().GetResult();
-            return baseUrl.TrimEnd('/') + url;
-        }
+            return "http://localhost:5000" + url;
         return url;
     }
 
-    private async Task<string> GetApiBaseUrlAsync()
-    {
-        // Try to get from window.__env or fallback to default
-        // In Blazor WASM, config is in wwwroot/appsettings.json
-        try
-        {
-            using var http = new HttpClient();
-            var json = await http.GetStringAsync("appsettings.json");
-            var apiBase = System.Text.Json.JsonDocument.Parse(json).RootElement.GetProperty("ApiBaseUrl").GetString();
-            return apiBase ?? "http://localhost:5000";
-        }
-        catch { return "http://localhost:5000"; }
-    }
-
-    private void ToggleDrawer()
-    {
-        _drawerOpen = !_drawerOpen;
-    }
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 
     private async Task HandleLogoutAsync()
     {
         await AuthService.LogoutAsync();
-        Navigation.NavigateTo("/", true);
+        Navigation.NavigateTo("/");
     }
 
-    private void GoToSettings()
-    {
-        Navigation.NavigateTo("/settings");
-    }
+    private void GoToSettings() => Navigation.NavigateTo("/settings");
 }

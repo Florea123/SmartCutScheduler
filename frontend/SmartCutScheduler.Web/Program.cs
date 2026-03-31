@@ -29,6 +29,7 @@ builder.Services.AddScoped<IBarberService, BarberService>();
 builder.Services.AddScoped<IBarberServiceService, BarberServiceService>();
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<ReviewService>();
 
 // Add authorization
 builder.Services.AddAuthorizationCore();

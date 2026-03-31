@@ -1,5 +1,5 @@
 ﻿<CascadingAuthenticationState>
-    <MudThemeProvider />
+    <MudThemeProvider Theme="@_theme" IsDarkMode="true" />
     <MudPopoverProvider />
     <MudDialogProvider />
     <MudSnackbarProvider />
@@ -26,4 +26,49 @@
 @code {
     [CascadingParameter]
     private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private MudTheme _theme = new MudTheme
+    {
+        PaletteDark = new PaletteDark
+        {
+            Primary         = "#F5A623",
+            PrimaryContrastText = "#000000",
+            Secondary       = "#FFD700",
+            SecondaryContrastText = "#000000",
+            Background      = "#0b1622",
+            BackgroundGray  = "#0e1d2f",
+            Surface         = "#132236",
+            DrawerBackground = "#0d1b2a",
+            DrawerText      = "#e0e6f0",
+            DrawerIcon      = "#F5A623",
+            AppbarBackground = "#0d1b2a",
+            AppbarText      = "#ffffff",
+            TextPrimary     = "#f0f4f8",
+            TextSecondary   = "#8fa3ba",
+            ActionDefault   = "#8fa3ba",
+            ActionDisabled  = "#4a637d",
+            ActionDisabledBackground = "#1a2e42",
+            Divider         = "#1e3a56",
+            DividerLight    = "#162d44",
+            TableLines      = "#1e3a56",
+            TableStriped    = "#0f1e2f",
+            TableHover      = "#19304a",
+            LinesDefault    = "#1e3a56",
+            LinesInputs     = "#2a4a6a",
+            OverlayDark     = "rgba(0,0,0,0.7)",
+        },
+        Typography = new Typography
+        {
+            Default = new DefaultTypography
+            {
+                FontFamily = new[] { "Inter", "Roboto", "sans-serif" },
+            }
+        },
+        LayoutProperties = new LayoutProperties
+        {
+            DrawerWidthLeft = "260px",
+            DefaultBorderRadius = "10px",
+        }
+    };
 }
+

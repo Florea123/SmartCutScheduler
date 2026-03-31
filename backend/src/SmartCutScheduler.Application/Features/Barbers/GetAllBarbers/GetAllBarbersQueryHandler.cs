@@ -25,7 +25,9 @@ public class GetAllBarbersQueryHandler(IBarberRepository barberRepository)
                 bs.Service.Name,
                 bs.Service.DurationMinutes,
                 bs.CustomPrice ?? bs.Service.BasePrice
-            )).ToList()
+            )).ToList(),
+            b.Reviews.Any() ? Math.Round(b.Reviews.Average(r => r.Rating), 1) : 0,
+            b.Reviews.Count
         )).ToList();
 
         return Results.Ok(result);

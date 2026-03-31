@@ -13,6 +13,7 @@ public class BarberRepository(AppDbContext context) : IBarberRepository
             .Include(b => b.BarberServices)
                 .ThenInclude(bs => bs.Service)
             .Include(b => b.WorkSchedules)
+            .Include(b => b.Reviews)
             .FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
     }
 
@@ -22,6 +23,7 @@ public class BarberRepository(AppDbContext context) : IBarberRepository
             .Include(b => b.BarberServices)
                 .ThenInclude(bs => bs.Service)
             .Include(b => b.WorkSchedules)
+            .Include(b => b.Reviews)
             .AsQueryable();
 
         if (!includeInactive)

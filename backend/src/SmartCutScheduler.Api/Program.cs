@@ -86,6 +86,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+
 builder.Services.AddHttpContextAccessor();
 
 // CORS Configuration
@@ -176,6 +177,7 @@ app.MapAppointmentEndpoints();
 app.MapPaymentEndpoints();
 app.MapStripeWebhookEndpoints();
 app.MapProfileEndpoints();
+app.MapReviewEndpoints();
 
 app.Run();
 

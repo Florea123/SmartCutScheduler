@@ -22,14 +22,20 @@ public static class DependencyInjection
         var connectionString = configuration.GetConnectionString("DefaultConnection")
                                ?? "Host=localhost;Port=5432;Database=smartcutscheduler;Username=postgres;Password=postgres";
 
-        services.AddDbContext<AppDbContext>(options =>
-            options.UseNpgsql(connectionString));
+        // Adaugă providerul Npgsql doar dacă environment-ul NU este 'Testing'
+        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        if (!string.Equals(env, "Testing", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddDbContext<AppDbContext>(options =>
+                options.UseNpgsql(connectionString));
+        }
 
         // Repositories
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IBarberRepository, BarberRepository>();
         services.AddScoped<IServiceRepository, ServiceRepository>();
         services.AddScoped<IAppointmentRepository, AppointmentRepository>();
+        services.AddScoped<IReviewRepository, ReviewRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 

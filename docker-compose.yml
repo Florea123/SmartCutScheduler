@@ -63,8 +63,25 @@ services:
     networks:
       - smartcut_network
 
+  sonarqube:
+    image: sonarqube:community
+    container_name: smartcut_sonarqube
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    ports:
+      - "9000:9000"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    networks:
+      - smartcut_network
+
 volumes:
   postgres_data:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
 
 networks:
   smartcut_network:

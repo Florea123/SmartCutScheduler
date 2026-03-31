@@ -33,6 +33,14 @@ appsettings.Development.json
 .DS_Store
 Thumbs.db
 
+## SonarQube scanner temp output
+.sonarqube/
+
+## Test results
+TestResults/
+coverage*.xml
+coverage*.json
+
 ## Node modules (for frontend)
 node_modules/
 dist/
