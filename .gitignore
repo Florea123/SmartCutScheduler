@@ -24,7 +24,26 @@ build/
 
 ## Environment files
 appsettings.Development.json
+appsettings.*.json
 *.env
+.env.*
+!.env.example
+
+## Python virtual environment
+.venv/
+venv/
+env/
+
+## Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+## Python coverage
+.coverage
+.coverage.*
+htmlcov/
 
 ## Logs
 *.log
