@@ -8,7 +8,9 @@ public record BarberDto(
     string? PhoneNumber,
     string? Email,
     bool IsActive,
-    List<ServiceDto> Services
+    List<ServiceDto> Services,
+    double AverageRating = 0,
+    int ReviewCount = 0
 );
 
 public record ServiceDto(

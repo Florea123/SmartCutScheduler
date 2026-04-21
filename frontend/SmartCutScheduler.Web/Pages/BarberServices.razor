@@ -1,4 +1,4 @@
-@page "/barber-services"
+﻿@page "/barber-services"
 @using SmartCutScheduler.Web.Services
 @using Microsoft.AspNetCore.Authorization
 @inject IBarberServiceService BarberServiceService
@@ -7,137 +7,228 @@
 
 <PageTitle>Serviciile Mele</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-    <MudText Typo="Typo.h4" Class="mb-4">Gestionare Servicii</MudText>
+<div class="bs-root">
+    <div class="bs-header">
+        <h4 class="bs-title">Gestionare Servicii</h4>
+    </div>
 
-    <MudGrid>
-        <!-- Serviciile Mele -->
-        <MudItem xs="12" md="6">
-            <MudCard>
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">Serviciile Mele</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    @if (_loadingMyServices)
-                    {
-                        <MudProgressCircular Indeterminate="true" />
-                    }
-                    else if (!_myServices.Any())
-                    {
-                        <MudText Color="Color.Secondary">Nu ai încă niciun serviciu adăugat.</MudText>
-                    }
-                    else
-                    {
-                        <MudList T="string">
-                            @foreach (var service in _myServices)
-                            {
-                                <MudListItem T="string">
-                                    <div class="d-flex justify-space-between align-center" style="width: 100%;">
-                                        <div>
-                                            <MudText Typo="Typo.body1"><strong>@service.Name</strong></MudText>
-                                            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                                @service.DurationMinutes min
-                                                @if (service.CustomPrice.HasValue)
-                                                {
-                                                    <span> • @service.CustomPrice.Value.ToString("0.00") RON (preț custom)</span>
-                                                }
-                                                else
-                                                {
-                                                    <span> • @service.BasePrice.ToString("0.00") RON</span>
-                                                }
-                                            </MudText>
-                                        </div>
-                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" 
-                                                      Color="Color.Error" 
-                                                      Size="Size.Small"
-                                                      OnClick="@(() => HandleRemoveServiceAsync(service.ServiceId))" />
-                                    </div>
-                                </MudListItem>
-                                <MudDivider />
-                            }
-                        </MudList>
-                    }
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
+    <div class="bs-grid">
+        <!-- My Services -->
+        <div class="bs-card">
+            <div class="bs-card-header">
+                <span class="bs-card-icon">✂</span>
+                <h5 class="bs-card-title">Serviciile Mele</h5>
+            </div>
+            <div class="bs-card-body">
+                @if (_loadingMyServices)
+                {
+                    <div class="bs-loading"><MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Small" /></div>
+                }
+                else if (!_myServices.Any())
+                {
+                    <div class="bs-empty">
+                        <p>Nu ai inca niciun serviciu adaugat.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="bs-service-list">
+                        @foreach (var service in _myServices)
+                        {
+                            <div class="bs-service-item">
+                                <div class="bs-service-info">
+                                    <span class="bs-service-name">@service.Name</span>
+                                    <span class="bs-service-meta">
+                                        @service.DurationMinutes min
+                                        @if (service.CustomPrice.HasValue)
+                                        {
+                                            <span> &bull; <b class="bs-price">@service.CustomPrice.Value.ToString("0.00") RON</b> (custom)</span>
+                                        }
+                                        else
+                                        {
+                                            <span> &bull; <b class="bs-price">@service.BasePrice.ToString("0.00") RON</b></span>
+                                        }
+                                    </span>
+                                </div>
+                                <button class="bs-delete-btn" @onclick="@(() => HandleRemoveServiceAsync(service.ServiceId))" title="Sterge serviciu">
+                                    &#10005;
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
 
-        <!-- Adaugă Serviciu -->
-        <MudItem xs="12" md="6">
-            <MudCard>
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">Adaugă Serviciu Nou</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudTextField @bind-Value="_newServiceName" 
-                                 Label="Nume serviciu *" 
+        <!-- Add Service -->
+        <div class="bs-card">
+            <div class="bs-card-header">
+                <span class="bs-card-icon">+</span>
+                <h5 class="bs-card-title">Adauga Serviciu Nou</h5>
+            </div>
+            <div class="bs-card-body">
+                <div class="bs-form-field">
+                    <MudTextField @bind-Value="_newServiceName"
+                                 Label="Nume serviciu *"
                                  Variant="Variant.Outlined"
-                                 Placeholder="ex: Tuns clasic, Aranjare barbă"
+                                 Placeholder="ex: Tuns clasic, Aranjare barba"
                                  Class="mb-3" />
-
-                    <MudTextField @bind-Value="_newServiceDescription" 
-                                 Label="Descriere (opțional)" 
+                </div>
+                <div class="bs-form-field">
+                    <MudTextField @bind-Value="_newServiceDescription"
+                                 Label="Descriere (optional)"
                                  Variant="Variant.Outlined"
                                  Lines="2"
                                  Placeholder="Detalii despre serviciu"
                                  Class="mb-3" />
-
-                    <MudTextField @bind-Value="_newServiceDuration" 
-                                 Label="Durată (minute) *" 
+                </div>
+                <div class="bs-form-field">
+                    <MudTextField @bind-Value="_newServiceDuration"
+                                 Label="Durata (minute) *"
                                  Variant="Variant.Outlined"
                                  InputType="InputType.Number"
                                  Placeholder="ex: 30"
                                  Class="mb-3"
                                  Min="1"
                                  Max="30"
-                                 HelperText="Durata maximă este 30 de minute" />
-
-                    <MudTextField @bind-Value="_newServicePrice" 
-                                 Label="Preț (RON) *" 
+                                 HelperText="Durata maxima este 30 de minute" />
+                </div>
+                <div class="bs-form-field">
+                    <MudTextField @bind-Value="_newServicePrice"
+                                 Label="Pret (RON) *"
                                  Variant="Variant.Outlined"
                                  Adornment="Adornment.End"
                                  AdornmentText="RON"
                                  Placeholder="ex: 50"
                                  Class="mb-4" />
+                </div>
+                <button class="bs-submit-btn"
+                        @onclick="HandleCreateServiceAsync"
+                        disabled="@(_submitting || string.IsNullOrWhiteSpace(_newServiceName) || _newServiceDuration <= 0 || _newServiceDuration > 30 || _newServicePrice <= 0)">
+                    @if (_submitting)
+                    {
+                        <MudProgressCircular Indeterminate="true" Size="Size.Small" Style="margin-right:8px;" />
+                        <span>Se creeaza...</span>
+                    }
+                    else
+                    {
+                        <span>Creeaza Serviciu</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
-                    <MudButton Variant="Variant.Filled" 
-                              Color="Color.Primary" 
-                              FullWidth="true"
-                              Disabled="@(_submitting || string.IsNullOrWhiteSpace(_newServiceName) || _newServiceDuration <= 0 || _newServiceDuration > 30 || _newServicePrice <= 0)"
-                              OnClick="HandleCreateServiceAsync">
-                        @if (_submitting)
-                        {
-                            <MudProgressCircular Indeterminate="true" Size="Size.Small" />
-                            <span class="ml-2">Creez...</span>
-                        }
-                        else
-                        {
-                            <span>Creează Serviciu</span>
-                        }
-                    </MudButton>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-    </MudGrid>
-</MudContainer>
+<style>
+    .bs-root {
+        max-width: 960px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+    .bs-header { margin-bottom: 1.5rem; }
+    .bs-title {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #f0f4f8;
+        margin: 0;
+    }
+    .bs-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+    @@media (max-width: 700px) {
+        .bs-grid { grid-template-columns: 1fr; }
+    }
+    .bs-card {
+        background: #132236;
+        border: 1px solid #1e3a56;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .bs-card-header {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 1rem 1.2rem;
+        border-bottom: 1px solid #1e3a56;
+        background: #0f1d2e;
+    }
+    .bs-card-icon {
+        color: #F5A623;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+    .bs-card-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #f0f4f8;
+        margin: 0;
+    }
+    .bs-card-body { padding: 1.2rem; }
+    .bs-loading { display: flex; justify-content: center; padding: 2rem; }
+    .bs-empty { color: #8fa3ba; text-align: center; padding: 2rem; }
+    .bs-service-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .bs-service-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.7rem 0.9rem;
+        background: #0f1d2e;
+        border-radius: 8px;
+        border: 1px solid #1e3a56;
+    }
+    .bs-service-info { display: flex; flex-direction: column; gap: 0.15rem; }
+    .bs-service-name { font-weight: 600; color: #f0f4f8; font-size: 0.9rem; }
+    .bs-service-meta { color: #8fa3ba; font-size: 0.8rem; }
+    .bs-price { color: #F5A623; }
+    .bs-delete-btn {
+        background: rgba(244,67,54,0.1);
+        color: #e57373;
+        border: 1px solid rgba(244,67,54,0.3);
+        border-radius: 6px;
+        width: 28px;
+        height: 28px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: background 0.2s;
+        flex-shrink: 0;
+    }
+    .bs-delete-btn:hover { background: rgba(244,67,54,0.25); }
+    .bs-form-field { margin-bottom: 0; }
+    .bs-submit-btn {
+        width: 100%;
+        background: #F5A623;
+        color: #0b1622;
+        border: none;
+        border-radius: 8px;
+        padding: 0.7rem;
+        font-size: 0.95rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s;
+    }
+    .bs-submit-btn:hover:not(:disabled) { background: #e09412; }
+    .bs-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+</style>
 
 @code {
     private List<AvailableServiceDto> _allServices = new();
     private List<AvailableServiceDto> _availableServices = new();
     private List<MyServiceDto> _myServices = new();
-    
+
     private Guid _selectedServiceId = Guid.Empty;
     private decimal? _customPrice;
-    
-    // New service fields
+
     private string _newServiceName = string.Empty;
     private string? _newServiceDescription;
     private int _newServiceDuration = 30;
     private decimal _newServicePrice = 50;
-    
+
     private bool _loadingAllServices = true;
     private bool _loadingMyServices = true;
     private bool _submitting = false;
@@ -156,7 +247,7 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Eroare la încărcarea serviciilor: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Eroare la incarcarea serviciilor: {ex.Message}", Severity.Error);
         }
         finally
         {
@@ -183,7 +274,7 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Eroare la încărcarea datelor: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Eroare la incarcarea datelor: {ex.Message}", Severity.Error);
         }
         finally
         {
@@ -205,16 +296,14 @@
             Snackbar.Add("Introdu numele serviciului!", Severity.Warning);
             return;
         }
-
         if (_newServiceDuration <= 0)
         {
-            Snackbar.Add("Durata trebuie să fie mai mare ca 0!", Severity.Warning);
+            Snackbar.Add("Durata trebuie sa fie mai mare ca 0!", Severity.Warning);
             return;
         }
-
         if (_newServicePrice <= 0)
         {
-            Snackbar.Add("Prețul trebuie să fie mai mare ca 0!", Severity.Warning);
+            Snackbar.Add("Pretul trebuie sa fie mai mare ca 0!", Severity.Warning);
             return;
         }
 
@@ -227,17 +316,14 @@
                 _newServiceDuration,
                 _newServicePrice
             );
-            
+
             if (success)
             {
                 Snackbar.Add("Serviciu creat cu succes!", Severity.Success);
-                
-                // Reset fields
                 _newServiceName = string.Empty;
                 _newServiceDescription = null;
                 _newServiceDuration = 30;
                 _newServicePrice = 50;
-                
                 await LoadMyServicesAsync();
             }
             else
@@ -259,7 +345,7 @@
     {
         if (_selectedServiceId == Guid.Empty)
         {
-            Snackbar.Add("Selectează un serviciu!", Severity.Warning);
+            Snackbar.Add("Selecteaza un serviciu!", Severity.Warning);
             return;
         }
 
@@ -267,17 +353,16 @@
         try
         {
             var success = await BarberServiceService.AddServiceAsync(_selectedServiceId, _customPrice);
-            
             if (success)
             {
-                Snackbar.Add("Serviciu adăugat cu succes!", Severity.Success);
+                Snackbar.Add("Serviciu adaugat cu succes!", Severity.Success);
                 _selectedServiceId = Guid.Empty;
                 _customPrice = null;
                 await LoadDataAsync();
             }
             else
             {
-                Snackbar.Add("Eroare la adăugarea serviciului.", Severity.Error);
+                Snackbar.Add("Eroare la adaugarea serviciului.", Severity.Error);
             }
         }
         catch (Exception ex)
@@ -295,15 +380,14 @@
         try
         {
             var success = await BarberServiceService.RemoveServiceAsync(serviceId);
-            
             if (success)
             {
-                Snackbar.Add("Serviciu șters cu succes!", Severity.Success);
+                Snackbar.Add("Serviciu sters cu succes!", Severity.Success);
                 await LoadMyServicesAsync();
             }
             else
             {
-                Snackbar.Add("Eroare la ștergerea serviciului.", Severity.Error);
+                Snackbar.Add("Eroare la stergerea serviciului.", Severity.Error);
             }
         }
         catch (Exception ex)

@@ -13,6 +13,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<BarberService> BarberServices => Set<BarberService>();
     public DbSet<WorkSchedule> WorkSchedules => Set<WorkSchedule>();
     public DbSet<Appointment> Appointments => Set<Appointment>();
+    public DbSet<Review> Reviews => Set<Review>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -62,6 +63,27 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .WithMany(s => s.Appointments)
             .HasForeignKey(a => a.ServiceId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Review configuration
+        modelBuilder.Entity<Review>()
+            .HasIndex(r => new { r.UserId, r.BarberId })
+            .IsUnique();
+        modelBuilder.Entity<Review>()
+            .Property(r => r.Rating)
+            .IsRequired();
+        modelBuilder.Entity<Review>()
+            .Property(r => r.CreatedAt)
+            .IsRequired();
+        modelBuilder.Entity<Review>()
+            .HasOne(r => r.User)
+            .WithMany(u => u.Reviews)
+            .HasForeignKey(r => r.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Review>()
+            .HasOne(r => r.Barber)
+            .WithMany(b => b.Reviews)
+            .HasForeignKey(r => r.BarberId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

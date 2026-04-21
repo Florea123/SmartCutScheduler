@@ -1,117 +1,112 @@
-@page "/login"
+﻿@page "/login"
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
 
-<PageTitle>Login / Register</PageTitle>
+<PageTitle>Login – SmartCut Scheduler</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="mt-16">
-    <MudPaper Class="pa-8" Elevation="3">
-        <MudTabs ApplyEffectsToContainer="true" Class="mb-4">
+<div class="login-bg">
+    <div class="login-logo-area">
+        <div class="login-logo-icon">✂</div>
+        <MudText Style="font-size:1.8rem; font-weight:800; color:#f0f4f8; letter-spacing:0.5px;">
+            SmartCut<span style="color:#F5A623;">Scheduler</span>
+        </MudText>
+        <MudText Typo="Typo.body2" Style="color:#8fa3ba; margin-top:4px;">Programează-te inteligent</MudText>
+    </div>
+
+    <MudPaper Class="login-card" Elevation="0">
+        <MudTabs ApplyEffectsToContainer="true" PanelClass="pt-4" Centered="true" SliderColor="Color.Primary">
             <MudTabPanel Text="Login">
                 <EditForm Model="@_loginModel" OnValidSubmit="HandleLoginAsync">
                     <DataAnnotationsValidator />
-                    
-                    <MudText Typo="Typo.h5" Class="mb-4">Autentificare</MudText>
-
+                    <MudText Typo="Typo.h5" Class="mb-5 mt-4" Style="font-weight:700; color:#f0f4f8; text-align:center;">Bine ai venit</MudText>
                     @if (!string.IsNullOrEmpty(_loginError))
                     {
-                        <MudAlert Severity="Severity.Error" Class="mb-4">@_loginError</MudAlert>
+                        <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">@_loginError</MudAlert>
                     }
-
-                    <MudTextField @bind-Value="_loginModel.Email" 
-                                  Label="Email" 
-                                  Variant="Variant.Outlined" 
-                                  Required="true"
-                                  InputType="InputType.Email"
-                                  Class="mb-4" />
-
-                    <MudTextField @bind-Value="_loginModel.Password" 
-                                  Label="Parolă" 
-                                  Variant="Variant.Outlined" 
-                                  Required="true"
-                                  InputType="InputType.Password"
-                                  Class="mb-4" />
-
-                    <MudButton ButtonType="ButtonType.Submit" 
-                               Variant="Variant.Filled" 
-                               Color="Color.Primary" 
-                               FullWidth="true"
-                               Disabled="_loginLoading">
-                        @if (_loginLoading)
-                        {
-                            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
-                        }
-                        else
-                        {
-                            <span>Login</span>
-                        }
+                    <MudTextField @bind-Value="_loginModel.Email" Label="Email" Variant="Variant.Outlined"
+                                  Required="true" InputType="InputType.Email" Class="mb-3"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Email" />
+                    <MudTextField @bind-Value="_loginModel.Password" Label="Parola" Variant="Variant.Outlined"
+                                  Required="true" InputType="InputType.Password" Class="mb-5"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Lock" />
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                               FullWidth="true" Size="Size.Large" Disabled="_loginLoading"
+                               Style="font-weight:700; color:#000; font-size:1rem; border-radius:50px;">
+                        @if (_loginLoading) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+                        <span>Autentifică-te</span>
                     </MudButton>
                 </EditForm>
             </MudTabPanel>
-
-            <MudTabPanel Text="Register">
+            <MudTabPanel Text="Cont nou">
                 <EditForm Model="@_registerModel" OnValidSubmit="HandleRegisterAsync">
                     <DataAnnotationsValidator />
-                    
-                    <MudText Typo="Typo.h5" Class="mb-4">Înregistrare</MudText>
-
+                    <MudText Typo="Typo.h5" Class="mb-5" Style="font-weight:700; color:#f0f4f8; text-align:center;">Creare cont</MudText>
                     @if (!string.IsNullOrEmpty(_registerError))
                     {
-                        <MudAlert Severity="Severity.Error" Class="mb-4">@_registerError</MudAlert>
+                        <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">@_registerError</MudAlert>
                     }
-
-                    <MudTextField @bind-Value="_registerModel.Name" 
-                                  Label="Nume complet" 
-                                  Variant="Variant.Outlined" 
-                                  Required="true"
-                                  Class="mb-3" />
-
-                    <MudTextField @bind-Value="_registerModel.Email" 
-                                  Label="Email" 
-                                  Variant="Variant.Outlined" 
-                                  Required="true"
-                                  InputType="InputType.Email"
-                                  Class="mb-3" />
-
-                    <MudTextField @bind-Value="_registerModel.PhoneNumber" 
-                                  Label="Telefon" 
-                                  Variant="Variant.Outlined" 
-                                  Required="true"
-                                  Class="mb-3" />
-
-                    <MudTextField @bind-Value="_registerModel.Password" 
-                                  Label="Parolă" 
-                                  Variant="Variant.Outlined" 
-                                  Required="true"
-                                  InputType="InputType.Password"
-                                  Class="mb-3" />
-
-                    <MudTextField @bind-Value="_registerModel.ConfirmPassword" 
-                                  Label="Confirmă parola" 
-                                  Variant="Variant.Outlined" 
-                                  Required="true"
-                                  InputType="InputType.Password"
-                                  Class="mb-4" />
-
-                    <MudButton ButtonType="ButtonType.Submit" 
-                               Variant="Variant.Filled" 
-                               Color="Color.Primary" 
-                               FullWidth="true"
-                               Disabled="_registerLoading">
-                        @if (_registerLoading)
-                        {
-                            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
-                        }
-                        else
-                        {
-                            <span>Înregistrare</span>
-                        }
+                    <MudTextField @bind-Value="_registerModel.Name" Label="Nume complet" Variant="Variant.Outlined"
+                                  Required="true" Class="mb-3"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person" />
+                    <MudTextField @bind-Value="_registerModel.Email" Label="Email" Variant="Variant.Outlined"
+                                  Required="true" InputType="InputType.Email" Class="mb-3"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Email" />
+                    <MudTextField @bind-Value="_registerModel.PhoneNumber" Label="Telefon" Variant="Variant.Outlined"
+                                  Required="true" Class="mb-3"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Phone" />
+                    <MudTextField @bind-Value="_registerModel.Password" Label="Parola" Variant="Variant.Outlined"
+                                  Required="true" InputType="InputType.Password" Class="mb-3"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Lock" />
+                    <MudTextField @bind-Value="_registerModel.ConfirmPassword" Label="Confirma parola" Variant="Variant.Outlined"
+                                  Required="true" InputType="InputType.Password" Class="mb-5"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.LockOpen" />
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                               FullWidth="true" Size="Size.Large" Disabled="_registerLoading"
+                               Style="font-weight:700; color:#000; font-size:1rem; border-radius:50px;">
+                        @if (_registerLoading) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+                        <span>Creaza contul</span>
                     </MudButton>
                 </EditForm>
             </MudTabPanel>
         </MudTabs>
     </MudPaper>
-</MudContainer>
+</div>
+
+<style>
+.login-bg {
+    min-height: 100vh;
+    background: #0b1622;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: 6vh;
+    padding-bottom: 24px;
+    padding-left: 24px;
+    padding-right: 24px;
+    gap: 20px;
+}
+.login-logo-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.login-logo-icon {
+    font-size: 3rem;
+    color: #F5A623;
+    margin-bottom: 4px;
+}
+.login-card {
+    background: #132236 !important;
+    border: 1px solid #1e3a56 !important;
+    border-radius: 20px !important;
+    padding: 32px !important;
+    width: 100%;
+    max-width: 440px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4) !important;
+}
+</style>
 
 @code {
     [SupplyParameterFromQuery]
@@ -128,60 +123,33 @@
     {
         _loginLoading = true;
         _loginError = null;
-
         try
         {
             var result = await AuthService.LoginAsync(_loginModel);
-            if (result != null)
-            {
-                Navigation.NavigateTo(ReturnUrl ?? "/");
-            }
-            else
-            {
-                _loginError = "Email sau parolă incorectă.";
-            }
+            if (result != null) Navigation.NavigateTo(ReturnUrl ?? "/");
+            else _loginError = "Email sau parola incorecta.";
         }
-        catch (Exception ex)
-        {
-            _loginError = $"Eroare: {ex.Message}";
-        }
-        finally
-        {
-            _loginLoading = false;
-        }
+        catch (Exception ex) { _loginError = $"Eroare: {ex.Message}"; }
+        finally { _loginLoading = false; }
     }
 
     private async Task HandleRegisterAsync()
     {
         _registerLoading = true;
         _registerError = null;
-
         if (_registerModel.Password != _registerModel.ConfirmPassword)
         {
             _registerError = "Parolele nu coincid.";
             _registerLoading = false;
             return;
         }
-
         try
         {
             var result = await AuthService.RegisterAsync(_registerModel);
-            if (result != null)
-            {
-                Navigation.NavigateTo(ReturnUrl ?? "/");
-            }
-            else
-            {
-                _registerError = "Înregistrarea a eșuat. Te rugăm să verifici datele introduse.";
-            }
+            if (result != null) Navigation.NavigateTo(ReturnUrl ?? "/");
+            else _registerError = "Inregistrarea a esuat. Te rugam sa verifici datele introduse.";
         }
-        catch (Exception ex)
-        {
-            _registerError = $"Eroare: {ex.Message}";
-        }
-        finally
-        {
-            _registerLoading = false;
-        }
+        catch (Exception ex) { _registerError = $"Eroare: {ex.Message}"; }
+        finally { _registerLoading = false; }
     }
 }

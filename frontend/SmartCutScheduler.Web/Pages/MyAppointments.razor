@@ -1,66 +1,102 @@
-@page "/appointments"
+﻿@page "/appointments"
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @inject IAppointmentService AppointmentService
 @inject NavigationManager Navigation
 
-<PageTitle>Programările Mele</PageTitle>
+<PageTitle>Programarile Mele – SmartCut Scheduler</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
+
     @if (Navigation.Uri.Contains("status=success"))
     {
-        <MudAlert Severity="Severity.Success" Class="mb-4">Plata a fost efectuată cu succes! Programarea a fost salvată.</MudAlert>
+        <MudAlert Severity="Severity.Success" Class="mb-4" Variant="Variant.Filled" Dense="true">
+            Plata a fost efectuata cu succes! Programarea a fost salvata.
+        </MudAlert>
     }
     else if (Navigation.Uri.Contains("status=cancel"))
     {
-        <MudAlert Severity="Severity.Error" Class="mb-4">Plata a fost anulată sau a eșuat.</MudAlert>
+        <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled" Dense="true">
+            Plata a fost anulata sau a esuat.
+        </MudAlert>
     }
-    <MudText Typo="Typo.h4" Class="mb-4">Programările Mele</MudText>
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-6" Wrap="Wrap.Wrap">
+        <MudStack Spacing="0">
+            <MudText Typo="Typo.h4" Style="font-weight:800; color:#f0f4f8;">Programarile Mele</MudText>
+            <MudText Typo="Typo.body2" Style="color:#8fa3ba;">Istoricul si programarile tale active</MudText>
+        </MudStack>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   Style="font-weight:700; color:#000; border-radius:50px;">
+            Programare noua
+        </MudButton>
+    </MudStack>
 
     @if (_loading)
     {
-        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        <MudStack AlignItems="AlignItems.Center" Class="py-12">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        </MudStack>
     }
     else if (_appointments.Any())
     {
-        <MudTable Items="@_appointmentsWithAutoCompleted" Hover="true" Breakpoint="Breakpoint.Sm">
-            <HeaderContent>
-                <MudTh>Frizer</MudTh>
-                <MudTh>Serviciu</MudTh>
-                <MudTh>Data</MudTh>
-                <MudTh>Ora</MudTh>
-                <MudTh>Status</MudTh>
-                <MudTh>Acțiuni</MudTh>
-            </HeaderContent>
-            <RowTemplate>
-                <MudTd DataLabel="Frizer">@context.BarberName</MudTd>
-                <MudTd DataLabel="Serviciu">@context.ServiceName</MudTd>
-                <MudTd DataLabel="Data">@DateTime.ParseExact(context.AppointmentDate, "yyyy-MM-dd", null).ToString("dd/MM/yyyy")</MudTd>
-                <MudTd DataLabel="Ora">@context.StartTime</MudTd>
-                <MudTd DataLabel="Status">
-                    <MudChip T="string" Color="@GetStatusColor(context.Status)" Size="Size.Small">
-                        @context.Status
-                    </MudChip>
-                </MudTd>
-                <MudTd DataLabel="Acțiuni">
-                    @if (context.Status == "Scheduled" || context.Status == "Confirmed")
-                    {
-                        <MudButton Size="Size.Small" 
-                                   Variant="Variant.Text" 
-                                   Color="Color.Error"
-                                   OnClick="() => CancelAppointmentAsync(context.Id)">
-                            Anulează
-                        </MudButton>
-                    }
-                </MudTd>
-            </RowTemplate>
-        </MudTable>
+        <MudPaper Elevation="0" Style="background:#132236; border:1px solid #1e3a56; border-radius:16px; overflow:hidden;">
+            <MudTable Items="@_appointmentsWithAutoCompleted" Hover="true" Breakpoint="Breakpoint.Sm"
+                      Style="background:transparent;" Elevation="0">
+                <HeaderContent>
+                    <MudTh Style="color:#8fa3ba; font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">Frizer</MudTh>
+                    <MudTh Style="color:#8fa3ba; font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">Serviciu</MudTh>
+                    <MudTh Style="color:#8fa3ba; font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">Data</MudTh>
+                    <MudTh Style="color:#8fa3ba; font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">Ora</MudTh>
+                    <MudTh Style="color:#8fa3ba; font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">Status</MudTh>
+                    <MudTh Style="color:#8fa3ba; font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">Actiuni</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Frizer">
+                        <MudText Style="font-weight:600; color:#f0f4f8;">@context.BarberName</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Serviciu">
+                        <MudText Style="color:#d0dce8;">@context.ServiceName</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Data">
+                        <MudText Style="color:#d0dce8;">@DateTime.ParseExact(context.AppointmentDate, "yyyy-MM-dd", null).ToString("dd/MM/yyyy")</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Ora">
+                        <MudText Style="color:#d0dce8;">@context.StartTime</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Status">
+                        <MudChip T="string" Color="@GetStatusColor(context.Status)" Size="Size.Small"
+                                 Style="font-weight:600;">
+                            @GetStatusLabel(context.Status)
+                        </MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Actiuni">
+                        @if (context.Status == "Scheduled" || context.Status == "Confirmed")
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error"
+                                       Style="border-radius:20px; font-size:0.75rem;"
+                                       OnClick="() => CancelAppointmentAsync(context.Id)">
+                                Anuleaza
+                            </MudButton>
+                        }
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
     }
     else
     {
-        <MudAlert Severity="Severity.Info">
-            Nu ai programări. <MudLink Href="/">Programează-te acum!</MudLink>
-        </MudAlert>
+        <MudPaper Elevation="0" Class="pa-10 text-center"
+                  Style="background:#132236; border:1px dashed #1e3a56; border-radius:20px;">
+            <MudIcon Icon="@Icons.Material.Outlined.CalendarMonth" Style="font-size:3.5rem; color:#3a5a7a;" />
+            <MudText Typo="Typo.h6" Class="mt-3" Style="color:#8fa3ba; font-weight:600;">Nu ai programari inca</MudText>
+            <MudText Typo="Typo.body2" Style="color:#5a7a9a;" Class="mt-1 mb-5">Fa-ti prima programare acum si gaseste frizerului potrivit</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/"
+                       Style="font-weight:700; color:#000; border-radius:50px; padding:10px 32px;">
+                Programeaza-te acum
+            </MudButton>
+        </MudPaper>
     }
 </MudContainer>
 
@@ -71,58 +107,32 @@
     private List<AppointmentDto> _appointmentsWithAutoCompleted => _appointments.Select(a =>
     {
         if ((a.Status == "Scheduled" || a.Status == "Confirmed") && IsInPast(a.AppointmentDate, a.StartTime))
-            return new AppointmentDto
-            {
-                Id = a.Id,
-                UserId = a.UserId,
-                UserName = a.UserName,
-                BarberId = a.BarberId,
-                BarberName = a.BarberName,
-                ServiceId = a.ServiceId,
-                ServiceName = a.ServiceName,
-                AppointmentDate = a.AppointmentDate,
-                StartTime = a.StartTime,
-                EndTime = a.EndTime,
-                Status = "Completed",
-                Notes = a.Notes
-            };
+            return new AppointmentDto { Id=a.Id, UserId=a.UserId, UserName=a.UserName, BarberId=a.BarberId, BarberName=a.BarberName,
+                ServiceId=a.ServiceId, ServiceName=a.ServiceName, AppointmentDate=a.AppointmentDate,
+                StartTime=a.StartTime, EndTime=a.EndTime, Status="Completed", Notes=a.Notes };
         return a;
     }).ToList();
 
     private bool IsInPast(string date, string time)
     {
         if (DateTime.TryParseExact(date + " " + time, "yyyy-MM-dd HH:mm", null, System.Globalization.DateTimeStyles.None, out var dt))
-        {
             return dt < DateTime.Now;
-        }
         return false;
     }
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadAppointmentsAsync();
-    }
+    protected override async Task OnInitializedAsync() => await LoadAppointmentsAsync();
 
     private async Task LoadAppointmentsAsync()
     {
         _loading = true;
-        try
-        {
-            _appointments = await AppointmentService.GetMyAppointmentsAsync();
-        }
-        finally
-        {
-            _loading = false;
-        }
+        try { _appointments = await AppointmentService.GetMyAppointmentsAsync(); }
+        finally { _loading = false; }
     }
 
     private async Task CancelAppointmentAsync(Guid id)
     {
         var success = await AppointmentService.CancelAppointmentAsync(id);
-        if (success)
-        {
-            await LoadAppointmentsAsync();
-        }
+        if (success) await LoadAppointmentsAsync();
     }
 
     private Color GetStatusColor(string status) => status switch
@@ -130,7 +140,16 @@
         "Scheduled" => Color.Info,
         "Confirmed" => Color.Success,
         "Completed" => Color.Default,
-        "Cancelled" => Color.Error,
+        "Cancelled"  => Color.Error,
         _ => Color.Default
+    };
+
+    private string GetStatusLabel(string status) => status switch
+    {
+        "Scheduled" => "Programat",
+        "Confirmed" => "Confirmat",
+        "Completed" => "Finalizat",
+        "Cancelled"  => "Anulat",
+        _ => status
     };
 }

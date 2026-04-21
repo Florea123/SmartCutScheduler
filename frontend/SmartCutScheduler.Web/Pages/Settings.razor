@@ -1,40 +1,127 @@
-@page "/settings"
+﻿@page "/settings"
 @using SmartCutScheduler.Web.Models
+@using Microsoft.Extensions.Http
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@inject IHttpClientFactory HttpClientFactory
 
-<PageTitle>Settings</PageTitle>
+<PageTitle>Setari profil – SmartCut Scheduler</PageTitle>
 
-<MudPaper Class="pa-6 mx-auto" MaxWidth="400px">
-    <MudText Typo="Typo.h5" Class="mb-4">Setări profil</MudText>
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-10">
+    <MudStack Spacing="2" Class="mb-6">
+        <MudText Typo="Typo.h4" Style="font-weight:800; color:#f0f4f8;">Setari profil</MudText>
+        <MudText Typo="Typo.body2" Style="color:#8fa3ba;">Actualizeaza informatiile tale personale</MudText>
+    </MudStack>
+
     @if (_loading)
     {
-        <MudProgressCircular Indeterminate="true" />
+        <MudStack AlignItems="AlignItems.Center" Class="py-10">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        </MudStack>
     }
     else if (_user != null)
     {
-        <MudAvatar Size="Size.Large" Class="mb-2">
-            @if (_previewImageUrl != null)
-            {
-                <MudImage Src="@_previewImageUrl" Alt="preview" Style="width:80px;height:80px;object-fit:cover;border-radius:50%;" />
-            }
-            else if (!string.IsNullOrWhiteSpace(_user?.ProfilePictureUrl))
-            {
-                <MudImage Src="@FixProfileImageUrl(_user.ProfilePictureUrl)" Alt="avatar" Style="width:80px;height:80px;object-fit:cover;border-radius:50%;" />
-            }
-        </MudAvatar>
-        <MudTextField @bind-Value="_user.Name" Label="Nume" Class="mb-2" />
-        <MudTextField @bind-Value="_user.PhoneNumber" Label="Număr de telefon" Class="mb-2" />
-        @if (_isBarber)
-        {
-            <MudTextField @bind-Value="_user.Description" Label="Descriere (frizer)" Class="mb-2" />
-        }
-        <MudText Typo="Typo.body2" Class="mb-2">Poza de profil:</MudText>
-        <InputFile OnChange="OnImageSelected" />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveChanges" Class="mt-4">Salvează modificările</MudButton>
+        <MudPaper Class="pa-6" Elevation="0" Style="background:#132236; border:1px solid #1e3a56; border-radius:20px;">
+
+            @* ── Avatar section ── *@
+            <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="mb-6">
+                <div style="position:relative; display:inline-block;">
+                    @if (_previewImageUrl != null || !string.IsNullOrWhiteSpace(_user?.ProfilePictureUrl))
+                    {
+                        <MudAvatar Style="width:100px; height:100px; border:3px solid #F5A623; box-shadow:0 4px 20px rgba(245,166,35,0.3);">
+                            <MudImage Src="@(_previewImageUrl ?? FixProfileImageUrl(_user?.ProfilePictureUrl) ?? "")"
+                                      Alt="avatar" Style="width:100%;height:100%;object-fit:cover;" />
+                        </MudAvatar>
+                    }
+                    else
+                    {
+                        <MudAvatar Style="width:100px; height:100px; border:3px solid #F5A623; background:linear-gradient(135deg,#F5A623,#FF8C00); font-size:2.5rem; font-weight:800; color:#000; box-shadow:0 4px 20px rgba(245,166,35,0.3);">
+                            @(_user?.Name?.Length > 0 ? _user.Name[0].ToString().ToUpper() : "?")
+                        </MudAvatar>
+                    }
+                    <div style="position:absolute; bottom:0; right:0; background:#F5A623; border-radius:50%; width:28px; height:28px; display:flex; align-items:center; justify-content:center;">
+                        <MudIcon Icon="@Icons.Material.Filled.PhotoCamera" Style="font-size:0.9rem; color:#000;" />
+                    </div>
+                </div>
+                <MudText Typo="Typo.body2" Style="color:#8fa3ba;">Schimba poza de profil</MudText>
+                <InputFile OnChange="OnImageSelected" style="display:none;" id="avatarInput" accept=".jpg,.jpeg,.png" />
+                <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                           Style="border-color:#2a4a6a; color:#8fa3ba;"
+                           OnClick="@(() => { })">
+                    <label for="avatarInput" style="cursor:pointer; margin:0;">Alege fisier</label>
+                </MudButton>
+                @if (!string.IsNullOrEmpty(_imageError))
+                {
+                    <MudText Typo="Typo.caption" Style="color:#f44336;">@_imageError</MudText>
+                }
+            </MudStack>
+
+            <MudDivider Style="border-color:#1e3a56; margin-bottom:24px;" />
+
+            @* ── Form fields ── *@
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_user.Name" Label="Nume complet" Variant="Variant.Outlined"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person" />
+                <MudTextField @bind-Value="_user.PhoneNumber" Label="Numar de telefon" Variant="Variant.Outlined"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Phone" />
+                @if (_isBarber)
+                {
+                    <MudTextField @bind-Value="_user.Description" Label="Descriere (vizibila clientilor)" Variant="Variant.Outlined"
+                                  Lines="3" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Description" />
+                }
+            </MudStack>
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveChanges" FullWidth="true"
+                       Class="mt-6" Size="Size.Large"
+                       Style="font-weight:700; color:#000; border-radius:50px;">
+                <MudIcon Icon="@Icons.Material.Filled.Save" Class="mr-2" />
+                Salveaza modificarile
+            </MudButton>
+        </MudPaper>
     }
-</MudPaper>
+
+    @* ── Google Calendar section ── *@
+    <MudPaper Class="pa-6 mt-6" Elevation="0"
+              Style="background:#132236; border:1px solid #1e3a56; border-radius:20px;">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4">
+            <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Style="color:#F5A623;" />
+            <MudText Typo="Typo.h6" Style="font-weight:700; color:#f0f4f8;">Google Calendar</MudText>
+        </MudStack>
+        <MudText Typo="Typo.body2" Style="color:#8fa3ba;" Class="mb-4">
+            Conecteaza contul Google pentru ca AI-ul sa evite programarile care se suprapun cu
+            evenimentele tale din calendar.
+        </MudText>
+
+        @if (_calendarLoading)
+        {
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (_calendarConnected)
+        {
+            <MudAlert Severity="Severity.Success" Dense="true" Class="mb-4"
+                      Style="background:#0d3320; border:1px solid #1e6b3a; border-radius:12px; color:#4caf50;">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Class="mr-1" />
+                Calendar conectat! AI-ul va evita conflictele cu evenimentele tale.
+            </MudAlert>
+            <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                       Style="border-color:#f44336; color:#f44336; border-radius:50px;"
+                       OnClick="DisconnectCalendar">
+                <MudIcon Icon="@Icons.Material.Filled.LinkOff" Class="mr-1" />
+                Deconecteaza Google Calendar
+            </MudButton>
+        }
+        else
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Medium"
+                       Style="font-weight:700; color:#000; border-radius:50px;"
+                       OnClick="ConnectCalendar">
+                <MudIcon Icon="@Icons.Material.Filled.Link" Class="mr-1" />
+                Conecteaza Google Calendar
+            </MudButton>
+        }
+    </MudPaper>
+</MudContainer>
 
 @code {
     private UserDto? _user;
@@ -44,6 +131,10 @@
     private string? _imageError;
     private string? _previewImageUrl;
 
+    // Google Calendar state
+    private bool _calendarConnected = false;
+    private bool _calendarLoading = false;
+
     [Inject] private IApiService ApiService { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
@@ -51,30 +142,94 @@
         _user = await AuthService.GetCurrentUserAsync();
         _isBarber = _user?.Role == "Barber";
         _loading = false;
+
+        // Check calendar connection status from query string (redirect after OAuth)
+        var uri = new Uri(Navigation.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("calendar", out var val) && val == "connected")
+        {
+            _calendarConnected = true;
+            Snackbar.Add("Google Calendar conectat cu succes!", Severity.Success);
+        }
+        else
+        {
+            await CheckCalendarStatus();
+        }
     }
 
-    private string? GetProfileImagePreview()
+    private async Task CheckCalendarStatus()
     {
-        if (_previewImageUrl != null)
-            return _previewImageUrl;
-        return FixProfileImageUrl(_user?.ProfilePictureUrl);
+        if (_user == null) return;
+        _calendarLoading = true;
+        try
+        {
+            var client = HttpClientFactory.CreateClient("AiService");
+            var response = await client.GetAsync($"/calendar/status?user_id={_user.Id}");
+            if (response.IsSuccessStatusCode)
+            {
+                var data = await response.Content.ReadFromJsonAsync<CalendarStatusDto>();
+                _calendarConnected = data?.Connected ?? false;
+            }
+        }
+        catch { /* AI service may not be running — silently ignore */ }
+        finally
+        {
+            _calendarLoading = false;
+        }
     }
+
+    private async Task ConnectCalendar()
+    {
+        if (_user == null) return;
+        try
+        {
+            var client = HttpClientFactory.CreateClient("AiService");
+            var response = await client.GetAsync($"/calendar/connect?user_id={_user.Id}");
+            if (response.IsSuccessStatusCode)
+            {
+                var data = await response.Content.ReadFromJsonAsync<CalendarConnectDto>();
+                if (!string.IsNullOrEmpty(data?.AuthUrl))
+                    Navigation.NavigateTo(data.AuthUrl, forceLoad: true);
+            }
+            else
+            {
+                Snackbar.Add("Integrarea Google Calendar nu este configurata pe server.", Severity.Warning);
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Serviciul AI nu este disponibil momentan.", Severity.Error);
+        }
+    }
+
+    private async Task DisconnectCalendar()
+    {
+        if (_user == null) return;
+        try
+        {
+            var client = HttpClientFactory.CreateClient("AiService");
+            var response = await client.DeleteAsync($"/calendar/disconnect?user_id={_user.Id}");
+            if (response.IsSuccessStatusCode)
+            {
+                _calendarConnected = false;
+                Snackbar.Add("Google Calendar deconectat.", Severity.Info);
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Eroare la deconectare. Incearca din nou.", Severity.Error);
+        }
+    }
+
+    private record CalendarStatusDto(bool Connected);
+    private record CalendarConnectDto(string AuthUrl);
 
     private string? FixProfileImageUrl(string? url)
     {
         if (string.IsNullOrWhiteSpace(url)) return null;
         if (url.StartsWith("/profile-images/"))
-        {
-            var baseUrl = GetApiBaseUrl();
-            return baseUrl.TrimEnd('/') + url;
-        }
+            return "http://localhost:5000" + url;
         return url;
-    }
-
-    private string GetApiBaseUrl()
-    {
-        // In Blazor WASM, config is in wwwroot/appsettings.json, but we know the default
-        return "http://localhost:5000";
     }
 
     private async Task OnImageSelected(InputFileChangeEventArgs e)
@@ -83,30 +238,15 @@
         _imageError = null;
         if (file != null)
         {
-            if (file.Size > 2 * 1024 * 1024)
-            {
-                _imageError = "Imaginea nu poate depăși 2MB.";
-                _selectedImage = null;
-                StateHasChanged();
-                return;
-            }
+            if (file.Size > 2 * 1024 * 1024) { _imageError = "Imaginea nu poate depasi 2MB."; return; }
             var allowed = new[] { ".jpg", ".jpeg", ".png" };
             var ext = System.IO.Path.GetExtension(file.Name).ToLower();
-            if (!allowed.Contains(ext))
-            {
-                _imageError = "Doar imagini .jpg, .jpeg, .png sunt permise.";
-                _selectedImage = null;
-                StateHasChanged();
-                return;
-            }
+            if (!allowed.Contains(ext)) { _imageError = "Doar imagini .jpg, .jpeg, .png sunt permise."; return; }
             _selectedImage = file;
-            // Generează preview imagine
             using var stream = file.OpenReadStream(2 * 1024 * 1024);
             using var ms = new MemoryStream();
             await stream.CopyToAsync(ms);
-            var base64 = Convert.ToBase64String(ms.ToArray());
-            var mime = file.ContentType;
-            _previewImageUrl = $"data:{mime};base64,{base64}";
+            _previewImageUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}";
             StateHasChanged();
         }
     }
@@ -114,39 +254,22 @@
     private async Task SaveChanges()
     {
         if (_user == null) return;
-
-        if (string.IsNullOrWhiteSpace(_user.Name))
-        {
-            Snackbar.Add("Numele este obligatoriu.", Severity.Error);
-            return;
-        }
+        if (string.IsNullOrWhiteSpace(_user.Name)) { Snackbar.Add("Numele este obligatoriu.", Severity.Error); return; }
         if (!string.IsNullOrWhiteSpace(_user.PhoneNumber) && _user.PhoneNumber.Length < 8)
-        {
-            Snackbar.Add("Numărul de telefon trebuie să aibă minim 8 cifre.", Severity.Error);
-            return;
-        }
+        { Snackbar.Add("Numarul de telefon trebuie sa aiba minim 8 cifre.", Severity.Error); return; }
 
         var content = new MultipartFormDataContent();
         content.Add(new StringContent(_user.Id.ToString()), "UserId");
         content.Add(new StringContent(_user.Name), "Name");
         content.Add(new StringContent(_user.PhoneNumber ?? string.Empty), "PhoneNumber");
-        // Trimite Description mereu, chiar și pentru client (string gol dacă nu e frizer)
         content.Add(new StringContent(_user.Description ?? string.Empty), "Description");
         if (_selectedImage != null)
         {
             var stream = _selectedImage.OpenReadStream(2 * 1024 * 1024);
             content.Add(new StreamContent(stream), "ProfileImage", _selectedImage.Name);
         }
-
         var response = await ApiService.PutMultipartAsync("/api/profile", content);
-        if (response.IsSuccessStatusCode)
-        {
-            Snackbar.Add("Modificările au fost salvate!", Severity.Success);
-            // Optionally reload user data
-        }
-        else
-        {
-            Snackbar.Add("Eroare la salvare. Încearcă din nou!", Severity.Error);
-        }
+        if (response.IsSuccessStatusCode) Snackbar.Add("Modificarile au fost salvate!", Severity.Success);
+        else Snackbar.Add("Eroare la salvare. Incearca din nou!", Severity.Error);
     }
 }
