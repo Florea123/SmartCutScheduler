@@ -24,7 +24,26 @@ build/
 
 ## Environment files
 appsettings.Development.json
+appsettings.*.json
 *.env
+.env.*
+!.env.example
+
+## Python virtual environment
+.venv/
+venv/
+env/
+
+## Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+## Python coverage
+.coverage
+.coverage.*
+htmlcov/
 
 ## Logs
 *.log
@@ -32,6 +51,14 @@ appsettings.Development.json
 ## OS files
 .DS_Store
 Thumbs.db
+
+## SonarQube scanner temp output
+.sonarqube/
+
+## Test results
+TestResults/
+coverage*.xml
+coverage*.json
 
 ## Node modules (for frontend)
 node_modules/

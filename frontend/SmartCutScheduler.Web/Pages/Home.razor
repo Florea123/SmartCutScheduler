@@ -1,49 +1,152 @@
 ﻿@page "/"
+@using MudBlazor
+@using MudBlazor.Services
+@using Microsoft.Extensions.Http
 @inject IBarberService BarberService
 @inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject IAuthService AuthService
+@inject IHttpClientFactory HttpClientFactory
+@inject NotificationService NotificationService
+@inject ISnackbar Snackbar
 
-<PageTitle>SmartCut Scheduler - Home</PageTitle>
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-10 mb-10">
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
-    <MudText Typo="Typo.h3" Align="Align.Center" GutterBottom="true">
-        Bine ai venit la SmartCut Scheduler
-    </MudText>
-    <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary" Class="mb-8">
-        Alege un frizer și programează-te online
-    </MudText>
+    <div class="home-hero">
+        <MudText Typo="Typo.h3" Align="Align.Center" Class="hero-title">
+            Bine ai venit la SmartCut Scheduler
+        </MudText>
+        <MudText Typo="Typo.h6" Align="Align.Center" Class="hero-subtitle mt-2 mb-6">
+            Alege un frizer și programează-te online
+        </MudText>
+
+        @* ── AI Recommendation Banner (only for logged-in Customers) ── *@
+        <AuthorizeView Roles="Customer">
+            <Authorized>
+                <div style="display:flex; justify-content:center; margin-bottom:32px;">
+                    <MudPaper Elevation="0"
+                              Style="background:linear-gradient(135deg,#0d2a1a,#132236); border:1px solid rgba(245,166,35,0.35); border-radius:20px; padding:20px 32px; display:flex; align-items:center; gap:20px; max-width:600px;">
+                        <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Style="font-size:2.2rem; color:#F5A623;" />
+                        <div style="flex:1;">
+                            <div style="font-weight:700; color:#f0f4f8; font-size:1rem;">Recomandare AI</div>
+                            <div style="color:#8fa3ba; font-size:0.82rem; margin-top:2px;">
+                                Lasa AI-ul sa iti gaseasca cel mai bun frizer disponibil maine
+                            </div>
+                        </div>
+                        <MudButton Variant="Variant.Filled"
+                                   Style="background:#F5A623; color:#000; font-weight:700; border-radius:50px; white-space:nowrap;"
+                                   Size="Size.Small"
+                                   Disabled="@_aiLoading"
+                                   OnClick="RequestAiRecommendation">
+                            @if (_aiLoading)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="color:#000;" Class="mr-1" />
+                                <span>Se proceseaza...</span>
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Small" Class="mr-1" />
+                                <span>Recomanda-mi un frizer</span>
+                            }
+                        </MudButton>
+                    </MudPaper>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+    </div>
 
     @if (_loading)
     {
-        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        <MudStack AlignItems="AlignItems.Center" Class="mt-16">
+            <MudProgressCircular Color="Color.Warning" Indeterminate="true" Size="Size.Large" />
+            <MudText Typo="Typo.body2" Class="mt-4" Style="color:#888;">Se încarcă frizerii...</MudText>
+        </MudStack>
     }
     else if (_barbers.Any())
     {
-        <MudGrid>
+        <MudStack Spacing="5">
             @foreach (var barber in _barbers)
             {
-                <MudItem xs="12" sm="6" md="4">
-                    <MudCard Class="barber-card d-flex flex-column" Style="height: 100%;">
-                        <MudCardMedia Image="@(barber.PhotoUrl ?? "/images/default-barber.jpg")" Height="200" />
-                        <MudCardContent Class="flex-grow-1">
-                            <MudText Typo="Typo.h5">@barber.Name</MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">@barber.Description</MudText>
-                            <MudChip T="string" Color="Color.Success" Size="Size.Small" Class="mt-2">
+                <div class="barber-row-card">
+                    @* ── Left: avatar + name ── *@
+                    <div class="barber-row-left">
+                        <div class="barber-avatar-wrap">
+                            @if (!string.IsNullOrEmpty(barber.PhotoUrl))
+                            {
+                                <img src="@FixPhotoUrl(barber.PhotoUrl)" alt="@barber.Name" class="barber-avatar-img" />
+                            }
+                            else
+                            {
+                                <div class="barber-avatar-placeholder">
+                                    @barber.Name[0]
+                                </div>
+                            }
+                        </div>
+                        <MudText Typo="Typo.subtitle1" Class="barber-left-name mt-2">@barber.Name</MudText>
+                    </div>
+
+                    @* ── Center: description + services ── *@
+                    <div class="barber-row-center">
+                        <MudText Typo="Typo.h6" Class="barber-center-name mb-1">
+                            @barber.Name
+                            @if (barber.ReviewCount > 0)
+                            {
+                                <span class="barber-rating-badge">
+                                    <span class="barber-rating-star">★</span>
+                                    <span class="barber-rating-value">@barber.AverageRating.ToString("0.0")</span>
+                                    <span class="barber-rating-count">(@barber.ReviewCount)</span>
+                                </span>
+                            }
+                        </MudText>
+                        <MudText Typo="Typo.body1" Class="barber-description mb-3">
+                            @barber.Description
+                        </MudText>
+
+                        @if (barber.Services.Any())
+                        {
+                            <div class="barber-services-chips">
+                                @foreach (var svc in barber.Services.Take(4))
+                                {
+                                    <span class="service-chip">
+                                        <MudIcon Icon="@Icons.Material.Filled.ContentCut" Size="Size.Small" Class="mr-1" Style="vertical-align:middle; font-size:0.85rem;" />
+                                        @svc.Name
+                                        <span class="service-chip-price">@svc.Price.ToString("0") lei</span>
+                                    </span>
+                                }
+                                @if (barber.Services.Count > 4)
+                                {
+                                    <span class="service-chip service-chip-more">
+                                        +@(barber.Services.Count - 4) mai multe
+                                    </span>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.caption" Style="color:#888;">
                                 @barber.Services.Count servicii disponibile
-                            </MudChip>
-                        </MudCardContent>
-                        <MudCardActions>
-                            <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="() => NavigateToBarberCalendar(barber.Id)">
-                                Vezi calendar
-                            </MudButton>
-                        </MudCardActions>
-                    </MudCard>
-                </MudItem>
+                            </MudText>
+                        }
+                    </div>
+
+                    @* ── Right: action buttons ── *@
+                    <div class="barber-row-actions">
+                        <button class="barber-btn barber-btn-calendar" @onclick="() => NavigateToBarberCalendar(barber.Id)">
+                            <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Class="btn-icon" />
+                            <span>Vezi Calendar</span>
+                        </button>
+                        <button class="barber-btn barber-btn-reviews" @onclick="() => OpenReviews(barber.Id)">
+                            <MudIcon Icon="@Icons.Material.Filled.StarRate" Class="btn-icon" />
+                            <span>Vezi Review-uri</span>
+                        </button>
+                    </div>
+                </div>
             }
-        </MudGrid>
+        </MudStack>
     }
     else
     {
-        <MudAlert Severity="Severity.Info">
+        <MudAlert Severity="Severity.Info" Class="mt-8">
             Nu sunt frizeri disponibili momentan.
         </MudAlert>
     }
@@ -52,6 +155,7 @@
 @code {
     private List<BarberDto> _barbers = new();
     private bool _loading = true;
+    private bool _aiLoading = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -75,24 +179,349 @@
         }
     }
 
+    private async Task RequestAiRecommendation()
+    {
+        if (_aiLoading) return;
+        var user = await AuthService.GetCurrentUserAsync();
+        if (user == null)
+        {
+            Snackbar.Add("Trebuie sa fii autentificat.", Severity.Warning);
+            return;
+        }
+
+        _aiLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            // Build slots: 3 time slots per barber for tomorrow
+            var tomorrow = DateTime.Today.AddDays(1).ToString("yyyy-MM-dd");
+            var timeSlots = new[] {
+                ("09:00:00", "10:00:00"),
+                ("11:00:00", "12:00:00"),
+                ("14:00:00", "15:00:00")
+            };
+
+            var slots = new List<AiSlotInfo>();
+            foreach (var barber in _barbers.Where(b => b.Services.Any()))
+            {
+                var svc = barber.Services.First();
+                foreach (var (start, end) in timeSlots)
+                {
+                    slots.Add(new AiSlotInfo
+                    {
+                        barberId = barber.Id.ToString(),
+                        barberName = barber.Name,
+                        barberRating = barber.AverageRating > 0 ? barber.AverageRating : null,
+                        serviceId = svc.Id.ToString(),
+                        date = tomorrow,
+                        startTime = start,
+                        endTime = end
+                    });
+                }
+            }
+
+            if (!slots.Any())
+            {
+                Snackbar.Add("Nu sunt frizeri cu servicii disponibile.", Severity.Warning);
+                return;
+            }
+
+            var token = await GetTokenAsync();
+            var request = new AiRecommendRequest
+            {
+                userId = user.Id.ToString(),
+                availableSlots = slots,
+                city = "Iasi",
+                includeCalendar = false,
+                authToken = token
+            };
+
+            var client = HttpClientFactory.CreateClient("AiService");
+            var response = await client.PostAsJsonAsync("/recommend", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<AiRecommendResponse>();
+                if (result != null)
+                {
+                    var notification = new AiNotification
+                    {
+                        BarberName = result.recommended_slot.barber,
+                        BarberId = result.recommended_slot.barberId,
+                        SlotDate = result.recommended_slot.date,
+                        SlotTime = result.recommended_slot.time,
+                        Score = result.score_breakdown.total,
+                        Reason = result.reason,
+                        CreatedAt = DateTime.Now,
+                        IsRead = false
+                    };
+                    await NotificationService.AddAsync(notification);
+                    Snackbar.Add($"Recomandare AI: {result.recommended_slot.barber} la {result.recommended_slot.time.Substring(0, 5)} ({result.score_breakdown.total:0.0}/100)", Severity.Success);
+                }
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
+            {
+                Snackbar.Add("Serviciul AI nu este disponibil momentan.", Severity.Error);
+            }
+            else
+            {
+                Snackbar.Add("Eroare la obtinerea recomandarii AI.", Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Nu se poate contacta serviciul AI. Asigura-te ca ruleaza pe portul 8000.", Severity.Error);
+        }
+        finally
+        {
+            _aiLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private Task<string?> GetTokenAsync() => Task.FromResult<string?>(null);
+
     private void NavigateToBarberCalendar(Guid barberId)
     {
         Navigation.NavigateTo($"/barber/{barberId}");
     }
+
+    private static string FixPhotoUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return string.Empty;
+        if (url.StartsWith("/profile-images/"))
+            return "http://localhost:5000" + url;
+        return url;
+    }
+
+    private async Task OpenReviews(Guid barberId)
+    {
+        var parameters = new DialogParameters { ["BarberId"] = barberId };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        await DialogService.ShowAsync<BarberReviews>("Review-uri pentru frizer", parameters, options);
+    }
 }
 
 <style>
-    .hover-card {
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    /* ── Hero ── */
+    .hero-title {
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        color: #f0f4f8;
+        text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+    }
+    .hero-subtitle {
+        color: #8fa3ba;
+        font-weight: 400;
     }
 
-    .hover-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    /* ── Row card ── */
+    .barber-row-card {
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        background: #132236;
+        border-radius: 20px;
+        padding: 28px 32px;
+        box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+        border: 1px solid #1e3a56;
+        transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+    }
+    .barber-row-card:hover {
+        box-shadow: 0 8px 36px rgba(0,0,0,0.45);
+        border-color: rgba(245,166,35,0.4);
+        transform: translateY(-2px);
     }
 
-    .cursor-pointer {
+    /* ── Left column ── */
+    .barber-row-left {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 110px;
+        max-width: 110px;
+    }
+    .barber-avatar-wrap {
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        overflow: hidden;
+        border: 3px solid #F5A623;
+        box-shadow: 0 4px 14px rgba(245,166,35,0.35);
+        flex-shrink: 0;
+    }
+    .barber-avatar-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .barber-avatar-placeholder {
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #FFD700, #FFA000);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.2rem;
+        font-weight: 800;
+        color: #1a1a2e;
+        text-transform: uppercase;
+    }
+    .barber-left-name {
+        font-weight: 700;
+        color: #f0f4f8;
+        text-align: center;
+        font-size: 0.85rem;
+        line-height: 1.3;
+    }
+
+    /* ── Center column ── */
+    .barber-row-center {
+        flex: 1;
+        min-width: 0;
+    }
+    .barber-center-name {
+        font-weight: 700;
+        color: #f0f4f8;
+        font-size: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .barber-rating-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        background: rgba(245,166,35,0.12);
+        border: 1px solid rgba(245,166,35,0.3);
+        border-radius: 20px;
+        padding: 2px 10px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .barber-rating-star {
+        color: #FFD700;
+        font-size: 0.9rem;
+    }
+    .barber-rating-value {
+        color: #FFD700;
+    }
+    .barber-rating-count {
+        color: #8fa3ba;
+        font-size: 0.78rem;
+        font-weight: 400;
+    }
+    .barber-description {
+        color: #8fa3ba;
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+    .barber-services-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 4px;
+    }
+    .service-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: rgba(245,166,35,0.08);
+        border: 1px solid rgba(245,166,35,0.25);
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-size: 0.8rem;
+        color: #8fa3ba;
+        font-weight: 500;
+    }
+    .service-chip-price {
+        margin-left: 4px;
+        color: #F5A623;
+        font-weight: 700;
+    }
+    .service-chip-more {
+        background: rgba(245,166,35,0.15);
+        border-color: rgba(245,166,35,0.4);
+        color: #F5A623;
+    }
+
+    /* ── Right column: action buttons ── */
+    .barber-row-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-width: 160px;
+    }
+    .barber-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 20px;
+        border-radius: 50px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        letter-spacing: 0.3px;
         cursor: pointer;
+        border: none;
+        transition: all 0.2s ease;
+        text-transform: uppercase;
+        width: 100%;
+    }
+    .btn-icon {
+        font-size: 1.1rem !important;
+    }
+    .barber-btn-calendar {
+        background: linear-gradient(135deg, #1a1a2e, #16213e);
+        color: #FFD700;
+        box-shadow: 0 4px 14px rgba(26,26,46,0.25);
+    }
+    .barber-btn-calendar:hover {
+        background: linear-gradient(135deg, #16213e, #0f3460);
+        box-shadow: 0 6px 20px rgba(26,26,46,0.35);
+        transform: scale(1.03);
+    }
+    .barber-btn-reviews {
+        background: linear-gradient(135deg, #FFD700, #FFA000);
+        color: #1a1a2e;
+        box-shadow: 0 4px 14px rgba(255,193,7,0.35);
+    }
+    .barber-btn-reviews:hover {
+        background: linear-gradient(135deg, #FFC107, #FF8F00);
+        box-shadow: 0 6px 20px rgba(255,193,7,0.5);
+        transform: scale(1.03);
+    }
+
+    /* ── Responsive ── */
+    @@media (max-width: 700px) {
+        .barber-row-card {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 20px;
+        }
+        .barber-row-left {
+            flex-direction: row;
+            min-width: unset;
+            max-width: unset;
+            gap: 12px;
+            align-items: center;
+        }
+        .barber-left-name {
+            text-align: left;
+        }
+        .barber-center-name {
+            display: none;
+        }
+        .barber-row-actions {
+            flex-direction: row;
+            min-width: unset;
+            width: 100%;
+        }
+        .barber-btn {
+            flex: 1;
+        }
     }
 </style>
 

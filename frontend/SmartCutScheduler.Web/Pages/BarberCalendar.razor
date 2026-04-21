@@ -1,4 +1,4 @@
-@page "/barber/{BarberId:guid}"
+﻿@page "/barber/{BarberId:guid}"
 @using SmartCutScheduler.Web.Models
 @using SmartCutScheduler.Web.Services
 @inject IBarberService BarberService
@@ -8,41 +8,39 @@
 
 <PageTitle>@(_barber?.Name ?? "Barber") - Calendar</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+<div class="bc-root">
     @if (_loading)
     {
-        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        <div class="bc-loading"><MudProgressCircular Color="Color.Primary" Indeterminate="true" /></div>
     }
     else if (_barber == null)
     {
-        <MudAlert Severity="Severity.Error">Frizerul nu a fost găsit</MudAlert>
+        <MudAlert Severity="Severity.Error">Frizerul nu a fost gasit</MudAlert>
     }
     else
     {
-        <MudPaper Class="pa-4 mb-4">
-            <MudText Typo="Typo.h4" Class="mb-2">@_barber.Name</MudText>
-            <MudText Typo="Typo.body1" Color="Color.Secondary">@_barber.Description</MudText>
-        </MudPaper>
+        <div class="bc-barber-header">
+            <div>
+                <h2 class="bc-barber-name">@_barber.Name</h2>
+                <p class="bc-barber-desc">@_barber.Description</p>
+            </div>
+        </div>
 
-        <!-- Calendar Month View -->
-        <MudPaper Class="pa-4 mb-4">
-            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
-                <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="PreviousMonth" />
-                <MudText Typo="Typo.h5">@_currentMonth.ToString("MMMM yyyy")</MudText>
-                <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="NextMonth" />
-            </MudStack>
+        <div class="bc-calendar-card">
+            <div class="bc-month-nav">
+                <button class="bc-nav-btn" @onclick="PreviousMonth">&#8249;</button>
+                <span class="bc-month-label">@_currentMonth.ToString("MMMM yyyy")</span>
+                <button class="bc-nav-btn" @onclick="NextMonth">&#8250;</button>
+            </div>
 
-            <!-- Calendar Grid -->
-            <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;">
-                <!-- Day Headers -->
-                @foreach (var day in new[] { "Lun", "Mar", "Mie", "Joi", "Vin", "Sâm", "Dum" })
+            <div class="bc-day-headers">
+                @foreach (var day in new[] { "Lun", "Mar", "Mie", "Joi", "Vin", "Sam", "Dum" })
                 {
-                    <div style="text-align: center; padding: 8px;">
-                        <MudText Typo="Typo.subtitle2" Color="Color.Secondary"><strong>@day</strong></MudText>
-                    </div>
+                    <div class="bc-day-header">@day</div>
                 }
+            </div>
 
-                <!-- Calendar Days -->
+            <div class="bc-calendar-grid">
                 @foreach (var day in _calendarDays)
                 {
                     var isToday = day == DateTime.Today;
@@ -52,91 +50,61 @@
                     var isPast = day < DateTime.Today;
                     var isBeyondMaxDate = day > _maxDate;
                     var isDisabled = !isCurrentMonth || isPast || !isWorkingDay || isBeyondMaxDate;
-                    
-                    var backgroundColor = "white";
-                    if (!isCurrentMonth)
-                    {
-                        backgroundColor = "#f5f5f5";
-                    }
-                    else if (!isWorkingDay)
-                    {
-                        backgroundColor = "#e0e0e0"; // Gri pentru weekend
-                    }
-                    else if (isPast || isBeyondMaxDate)
-                    {
-                        backgroundColor = "#f5f5f5"; // Gri deschis pentru zile invalide
-                    }
-                    
-                    if (isSelected)
-                    {
-                        backgroundColor = "#1976d2";
-                    }
 
-                    <div>
-                        <MudButton 
-                            Variant="Variant.Filled"
-                            FullWidth="true"
-                            Style="@($"height: 60px; background-color: {backgroundColor}; color: {(isSelected ? "white" : (isCurrentMonth ? "black" : "#bdbdbd"))}; border: {(isToday && !isSelected ? "2px solid #2196f3" : "1px solid #e0e0e0")}")"
-                            OnClick="@(() => SelectDay(day))"
-                            Disabled="@isDisabled">
-                            <MudText Typo="Typo.body1">@day.Day</MudText>
-                        </MudButton>
-                    </div>
+                    var cellClass = "bc-day";
+                    if (!isCurrentMonth) cellClass += " bc-day-other";
+                    else if (isSelected) cellClass += " bc-day-selected";
+                    else if (isToday) cellClass += " bc-day-today";
+                    else if (isDisabled) cellClass += " bc-day-disabled";
+                    else cellClass += " bc-day-available";
+
+                    <button class="@cellClass" @onclick="() => SelectDay(day)" disabled="@isDisabled">
+                        @day.Day
+                    </button>
                 }
             </div>
-        </MudPaper>
+        </div>
 
-        <!-- Time Slots -->
         @if (_selectedDate.HasValue)
         {
-            <MudPaper Class="pa-4">
-                <MudText Typo="Typo.h6" Class="mb-3">
-                    Ore disponibile pentru @_selectedDate.Value.ToString("dd MMMM yyyy")
-                </MudText>
+            <div class="bc-slots-card">
+                <h3 class="bc-slots-title">
+                    Ore disponibile pentru <span class="bc-slots-date">@_selectedDate.Value.ToString("dd MMMM yyyy")</span>
+                </h3>
 
                 @if (_loadingSlots)
                 {
-                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                    <div class="bc-loading"><MudProgressCircular Color="Color.Primary" Indeterminate="true" /></div>
                 }
                 else if (!_daySlots.Any())
                 {
-                    <MudAlert Severity="Severity.Warning">Nu sunt ore disponibile în această zi</MudAlert>
+                    <div class="bc-no-slots">Nu sunt ore disponibile in aceasta zi</div>
                 }
                 else
                 {
-                    <MudGrid Spacing="2">
+                    <div class="bc-slots-grid">
                         @foreach (var slot in _daySlots)
                         {
                             var slotTime = DateTime.Parse(slot.Time);
                             var isPast = _selectedDate.Value.Date == DateTime.Today && slotTime.TimeOfDay < DateTime.Now.TimeOfDay;
                             var isDisabled = slot.IsBooked || isPast;
-                            
-                            var buttonColor = slot.IsBooked ? Color.Error : Color.Success;
-                            var buttonText = slot.IsBooked ? "Ocupat" : slotTime.ToString("HH:mm");
-                            
-                            <MudItem xs="6" sm="3" md="2">
-                                <MudButton 
-                                    Variant="Variant.Filled" 
-                                    Color="@buttonColor"
-                                    FullWidth="true"
-                                    Disabled="@isDisabled"
-                                    Style="@(isPast ? "opacity: 0.5" : "")"
-                                    OnClick="@(() => SelectTimeSlot(slot))">
-                                    @buttonText
-                                </MudButton>
-                            </MudItem>
+
+                            <button class="bc-slot @(slot.IsBooked ? "bc-slot-booked" : isPast ? "bc-slot-past" : "bc-slot-free")"
+                                    @onclick="@(() => SelectTimeSlot(slot))"
+                                    disabled="@isDisabled">
+                                @(slot.IsBooked ? "Ocupat" : slotTime.ToString("HH:mm"))
+                            </button>
                         }
-                    </MudGrid>
+                    </div>
                 }
-            </MudPaper>
+            </div>
         }
     }
-</MudContainer>
+</div>
 
-<!-- Service Selection Dialog -->
 <MudDialog @bind-IsVisible="_showServiceDialog" Options="new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true }">
     <TitleContent>
-        <MudText Typo="Typo.h6">Selectează Serviciul</MudText>
+        <MudText Typo="Typo.h6">Selecteaza Serviciul</MudText>
     </TitleContent>
     <DialogContent>
         <MudText Typo="Typo.body2" Class="mb-3">
@@ -152,16 +120,159 @@
         </MudSelect>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="CancelServiceSelection">Anulează</MudButton>
+        <MudButton OnClick="CancelServiceSelection">Anuleaza</MudButton>
         <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="ConfirmAppointment" Disabled="@(!_selectedServiceId.HasValue)">
-            Confirmă
+            Confirma
         </MudButton>
     </DialogActions>
 </MudDialog>
 
+<style>
+    .bc-root {
+        max-width: 860px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+    .bc-loading {
+        display: flex;
+        justify-content: center;
+        padding: 3rem 0;
+    }
+    .bc-barber-header {
+        background: #132236;
+        border: 1px solid #1e3a56;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .bc-barber-name {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #f0f4f8;
+        margin: 0 0 0.3rem;
+    }
+    .bc-barber-desc {
+        color: #8fa3ba;
+        margin: 0;
+        font-size: 0.95rem;
+    }
+    .bc-calendar-card {
+        background: #132236;
+        border: 1px solid #1e3a56;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .bc-month-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.2rem;
+    }
+    .bc-nav-btn {
+        background: #1e3a56;
+        color: #f0f4f8;
+        border: none;
+        border-radius: 8px;
+        width: 36px;
+        height: 36px;
+        font-size: 1.4rem;
+        cursor: pointer;
+        transition: background 0.2s;
+        line-height: 1;
+    }
+    .bc-nav-btn:hover { background: #2a4a6a; }
+    .bc-month-label {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #f0f4f8;
+        text-transform: capitalize;
+    }
+    .bc-day-headers {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 4px;
+        margin-bottom: 4px;
+    }
+    .bc-day-header {
+        text-align: center;
+        padding: 6px 0;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #8fa3ba;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .bc-calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 4px;
+    }
+    .bc-day {
+        border: none;
+        border-radius: 8px;
+        height: 52px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .bc-day-other { background: transparent; color: #3a5a7a; cursor: default; }
+    .bc-day-disabled { background: #0f1d2e; color: #3a5a7a; cursor: not-allowed; }
+    .bc-day-available { background: #1e3a56; color: #f0f4f8; }
+    .bc-day-available:hover { background: #2a4a6a; }
+    .bc-day-today { background: #1e3a56; color: #F5A623; border: 2px solid #F5A623; }
+    .bc-day-today:hover { background: #2a4a6a; }
+    .bc-day-selected { background: #F5A623; color: #0b1622; }
+    .bc-slots-card {
+        background: #132236;
+        border: 1px solid #1e3a56;
+        border-radius: 12px;
+        padding: 1.5rem;
+    }
+    .bc-slots-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #f0f4f8;
+        margin: 0 0 1rem;
+    }
+    .bc-slots-date { color: #F5A623; }
+    .bc-no-slots {
+        color: #8fa3ba;
+        text-align: center;
+        padding: 2rem;
+        background: #0f1d2e;
+        border-radius: 8px;
+    }
+    .bc-slots-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+        gap: 8px;
+    }
+    .bc-slot {
+        border: none;
+        border-radius: 8px;
+        padding: 10px 6px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .bc-slot-free { background: rgba(76,175,80,0.15); color: #81c784; border: 1px solid rgba(76,175,80,0.3); }
+    .bc-slot-free:hover { background: rgba(76,175,80,0.25); }
+    .bc-slot-booked { background: rgba(244,67,54,0.1); color: #e57373; cursor: not-allowed; }
+    .bc-slot-past { background: #0f1d2e; color: #3a5a7a; cursor: not-allowed; opacity: 0.6; }
+</style>
+
 @code {
     [Parameter]
     public Guid BarberId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "preDate")]
+    public string? PreDate { get; set; }
+
+    [SupplyParameterFromQuery(Name = "preTime")]
+    public string? PreTime { get; set; }
 
     private BarberDto? _barber;
     private List<ServiceDto> _services = new();
@@ -169,7 +280,7 @@
     private List<DateTime> _calendarDays = new();
 
     private DateTime _currentMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
-    private DateTime _maxDate = DateTime.Today.AddMonths(2); // Maxim 2 luni în viitor
+    private DateTime _maxDate = DateTime.Today.AddMonths(2);
     private DateTime? _selectedDate;
     private Guid? _selectedServiceId;
     private DateTime? _selectedSlot;
@@ -182,7 +293,29 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadBarberData();
-        GenerateCalendarDays();
+
+        // Pre-select date from notification recommendation
+        if (!string.IsNullOrWhiteSpace(PreDate) && DateTime.TryParse(PreDate, out var preDate)
+            && preDate >= DateTime.Today && preDate <= _maxDate)
+        {
+            _currentMonth = new DateTime(preDate.Year, preDate.Month, 1);
+            GenerateCalendarDays();
+            await SelectDay(preDate);
+
+            // Pre-highlight slot if preTime provided
+            if (!string.IsNullOrWhiteSpace(PreTime) && _daySlots.Any())
+            {
+                var prefix = PreTime.Length >= 5 ? PreTime.Substring(0, 5) : PreTime;
+                var match = _daySlots.FirstOrDefault(s =>
+                    s.Time.StartsWith(prefix) && !s.IsBooked);
+                if (match != null)
+                    _selectedSlot = DateTime.Parse(_selectedDate!.Value.ToString("yyyy-MM-dd") + "T" + match.Time);
+            }
+        }
+        else
+        {
+            GenerateCalendarDays();
+        }
     }
 
     private async Task LoadBarberData()
@@ -199,11 +332,9 @@
         var firstDayOfMonth = _currentMonth;
         var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
 
-        // Start from Monday of the week containing the first day
         var startDate = firstDayOfMonth.AddDays(-(int)firstDayOfMonth.DayOfWeek + (int)DayOfWeek.Monday);
         if (startDate > firstDayOfMonth) startDate = startDate.AddDays(-7);
 
-        // End on Sunday of the week containing the last day
         var endDate = lastDayOfMonth.AddDays((int)DayOfWeek.Sunday - (int)lastDayOfMonth.DayOfWeek);
         if (endDate < lastDayOfMonth) endDate = endDate.AddDays(7);
 
@@ -215,14 +346,12 @@
 
     private bool IsWorkingDay(DayOfWeek dayOfWeek)
     {
-        // Frizerul lucrează Luni-Vineri (08:00-18:00)
         return dayOfWeek >= DayOfWeek.Monday && dayOfWeek <= DayOfWeek.Friday;
     }
 
     private void PreviousMonth()
     {
         var newMonth = _currentMonth.AddMonths(-1);
-        // Nu permite navigare înainte de luna curentă
         if (newMonth >= new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1))
         {
             _currentMonth = newMonth;
@@ -233,7 +362,6 @@
     private void NextMonth()
     {
         var newMonth = _currentMonth.AddMonths(1);
-        // Nu permite navigare după +2 luni de la data curentă
         if (newMonth <= _maxDate)
         {
             _currentMonth = newMonth;
@@ -243,7 +371,6 @@
 
     private async Task SelectDay(DateTime day)
     {
-        // Verifică dacă ziua este în range valid (azi → +2 luni) și este zi de lucru
         if (day < DateTime.Today || day > _maxDate || !IsWorkingDay(day.DayOfWeek))
             return;
 
@@ -251,7 +378,7 @@
         _daySlots.Clear();
         _selectedSlot = null;
         _selectedServiceId = null;
-        
+
         await LoadDaySlotsAsync();
     }
 
@@ -269,10 +396,7 @@
     {
         if (slot.IsBooked)
             return;
-
-        // Check authentication (async workaround)
         _ = CheckAuthAndNavigateToAppointment(slot);
-
     }
 
     private async Task CheckAuthAndNavigateToAppointment(TimeSlotDto slot)
@@ -284,7 +408,6 @@
         var appointmentUrl = $"/appointment/new?barberId={BarberId}&date={Uri.EscapeDataString(fullDate.ToString("o"))}";
         if (!authState.User.Identity?.IsAuthenticated ?? true)
         {
-            // Redirect to login with returnUrl to appointment page
             Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(appointmentUrl)}");
             return;
         }
@@ -300,7 +423,6 @@
 
     private async Task ConfirmAppointment()
     {
-        // Check authentication
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         if (!authState.User.Identity?.IsAuthenticated ?? true)
         {
@@ -309,11 +431,8 @@
         }
 
         if (!_selectedServiceId.HasValue || !_selectedSlot.HasValue)
-        {
             return;
-        }
 
-        // Redirecționează către pagina de finalizare programare cu parametri
         var dateParam = _selectedSlot.Value.ToString("o");
         Navigation.NavigateTo($"/appointment/new?barberId={BarberId}&date={Uri.EscapeDataString(dateParam)}&serviceId={_selectedServiceId}");
         _showServiceDialog = false;

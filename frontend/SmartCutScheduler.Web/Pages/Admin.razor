@@ -9,301 +9,400 @@
 
 <PageTitle>Admin Panel</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-8">
-    <MudText Typo="Typo.h4" Class="mb-6">Panou Admin</MudText>
+<div class="admin-page">
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pt-8 pb-10">
 
-    <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
-        <!-- Tab 1: Adaugă Frizer -->
-        <MudTabPanel Text="Adaugă Frizer" Icon="@Icons.Material.Filled.PersonAdd">
-            <MudPaper Class="pa-6">
-                <MudText Typo="Typo.h5" Class="mb-4">Adaugă Frizer Nou</MudText>
+        @* ── Header ── *@
+        <div class="admin-header mb-8">
+            <div class="admin-header-icon">
+                <MudIcon Icon="@Icons.Material.Filled.Shield" Style="font-size:2rem; color:#F5A623;" />
+            </div>
+            <div>
+                <MudText Typo="Typo.h4" Style="font-weight:800; color:#f0f4f8; letter-spacing:-0.5px;">Panou Admin</MudText>
+                <MudText Typo="Typo.body2" Style="color:#8fa3ba;">Gestionează frizerii și utilizatorii platformei</MudText>
+            </div>
+        </div>
 
-                @if (!string.IsNullOrEmpty(_errorMessage))
-                {
-                    <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
-                }
+        @* ── Tab navigation ── *@
+        <div class="admin-tabs-wrap">
+            <div class="admin-tab-btns">
+                <button class="admin-tab-btn @(_activeTab == 0 ? "active" : "")" @onclick="() => _activeTab = 0">
+                    <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Class="tab-icon" />
+                    Adaugă Frizer
+                </button>
+                <button class="admin-tab-btn @(_activeTab == 1 ? "active" : "")" @onclick="() => _activeTab = 1">
+                    <MudIcon Icon="@Icons.Material.Filled.People" Class="tab-icon" />
+                    Utilizatori
+                    @if (_users.Any())
+                    {
+                        <span class="tab-badge">@_users.Count</span>
+                    }
+                </button>
+                <button class="admin-tab-btn @(_activeTab == 2 ? "active" : "")" @onclick="() => _activeTab = 2">
+                    <MudIcon Icon="@Icons.Material.Filled.ContentCut" Class="tab-icon" />
+                    Frizeri
+                    @if (_barbers.Any())
+                    {
+                        <span class="tab-badge">@_barbers.Count</span>
+                    }
+                </button>
+            </div>
 
-                @if (!string.IsNullOrEmpty(_successMessage))
-                {
-                    <MudAlert Severity="Severity.Success" Class="mb-4">@_successMessage</MudAlert>
-                }
+            @* ══ Tab 0: Adaugă Frizer ══ *@
+            @if (_activeTab == 0)
+            {
+                <div class="admin-panel">
+                    <MudText Typo="Typo.h6" Class="panel-title mb-5">
+                        <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Class="mr-2" Style="color:#F5A623; vertical-align:middle;" />
+                        Adaugă Frizer Nou
+                    </MudText>
 
-                <EditForm Model="@_barberModel" OnValidSubmit="HandleSubmitAsync">
-                    <DataAnnotationsValidator />
+                    @if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Outlined">@_errorMessage</MudAlert>
+                    }
+                    @if (!string.IsNullOrEmpty(_successMessage))
+                    {
+                        <MudAlert Severity="Severity.Success" Class="mb-4" Variant="Variant.Outlined">@_successMessage</MudAlert>
+                    }
 
-                    <MudGrid>
-                        <MudItem xs="12" md="6">
-                            <MudTextField @bind-Value="_barberModel.Name" 
-                                          Label="Nume complet" 
-                                          Variant="Variant.Outlined" 
-                                          Required="true"
-                                          Class="mb-3" />
-                        </MudItem>
+                    <EditForm Model="@_barberModel" OnValidSubmit="HandleSubmitAsync">
+                        <DataAnnotationsValidator />
+                        <MudGrid Spacing="3">
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_barberModel.Name"
+                                              Label="Nume complet"
+                                              Variant="Variant.Outlined"
+                                              Required="true"
+                                              AdornmentIcon="@Icons.Material.Filled.Person"
+                                              Adornment="Adornment.Start"
+                                              AdornmentColor="Color.Warning" />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_barberModel.Email"
+                                              Label="Email"
+                                              Variant="Variant.Outlined"
+                                              Required="true"
+                                              InputType="InputType.Email"
+                                              AdornmentIcon="@Icons.Material.Filled.Email"
+                                              Adornment="Adornment.Start"
+                                              AdornmentColor="Color.Warning" />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_barberModel.Password"
+                                              Label="Parolă"
+                                              Variant="Variant.Outlined"
+                                              Required="true"
+                                              InputType="InputType.Password"
+                                              AdornmentIcon="@Icons.Material.Filled.Lock"
+                                              Adornment="Adornment.Start"
+                                              AdornmentColor="Color.Warning" />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_barberModel.PhoneNumber"
+                                              Label="Telefon"
+                                              Variant="Variant.Outlined"
+                                              Required="true"
+                                              AdornmentIcon="@Icons.Material.Filled.Phone"
+                                              Adornment="Adornment.Start"
+                                              AdornmentColor="Color.Warning" />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_barberModel.ConfirmPassword"
+                                              Label="Confirmă parola"
+                                              Variant="Variant.Outlined"
+                                              Required="true"
+                                              InputType="InputType.Password"
+                                              AdornmentIcon="@Icons.Material.Outlined.Lock"
+                                              Adornment="Adornment.Start"
+                                              AdornmentColor="Color.Warning" />
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="_barberModel.Description"
+                                              Label="Descriere"
+                                              Variant="Variant.Outlined"
+                                              Lines="3"
+                                              Placeholder="Scurtă descriere despre frizer..." />
+                            </MudItem>
 
-                        <MudItem xs="12" md="6">
-                            <MudTextField @bind-Value="_barberModel.Email" 
-                                          Label="Email" 
-                                          Variant="Variant.Outlined" 
-                                          Required="true"
-                                          InputType="InputType.Email"
-                                          Class="mb-3" />
-                        </MudItem>
+                            @* Photo upload *@
+                            <MudItem xs="12">
+                                <div class="photo-upload-area">
+                                    <div class="photo-preview">
+                                        @if (!string.IsNullOrEmpty(_previewImageUrl))
+                                        {
+                                            <img src="@_previewImageUrl" alt="preview" class="photo-preview-img" />
+                                        }
+                                        else
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.CameraAlt" Style="font-size:2.5rem; color:#8fa3ba;" />
+                                        }
+                                    </div>
+                                    <div class="photo-upload-info">
+                                        <MudText Typo="Typo.body1" Style="color:#f0f4f8; font-weight:600;" Class="mb-1">
+                                            Poză de profil <span style="color:#F5A623;">*</span>
+                                        </MudText>
+                                        <MudText Typo="Typo.caption" Style="color:#8fa3ba;" Class="mb-3">
+                                            JPG, JPEG sau PNG · Max 2MB
+                                        </MudText>
+                                        <label class="upload-btn">
+                                            <MudIcon Icon="@Icons.Material.Filled.Upload" Class="mr-1" Style="font-size:1rem;" />
+                                            Alege fișier
+                                            <InputFile OnChange="OnImageSelected" style="display:none;" />
+                                        </label>
+                                    </div>
+                                </div>
+                                @if (!string.IsNullOrEmpty(_imageError))
+                                {
+                                    <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2" Variant="Variant.Outlined">@_imageError</MudAlert>
+                                }
+                            </MudItem>
 
-                        <MudItem xs="12" md="6">
-                            <MudTextField @bind-Value="_barberModel.PhoneNumber" 
-                                          Label="Telefon" 
-                                          Variant="Variant.Outlined" 
-                                          Required="true"
-                                          Class="mb-3" />
-                        </MudItem>
-
-                        <MudItem xs="12" md="6">
-                            <MudTextField @bind-Value="_barberModel.Password" 
-                                          Label="Parolă" 
-                                          Variant="Variant.Outlined" 
-                                          Required="true"
-                                          InputType="InputType.Password"
-                                          Class="mb-3" />
-                        </MudItem>
-
-                        <MudItem xs="12">
-                            <MudTextField @bind-Value="_barberModel.Description" 
-                                          Label="Descriere" 
-                                          Variant="Variant.Outlined" 
-                                          Lines="3"
-                                          Class="mb-3" />
-                        </MudItem>
-
-                        <MudItem xs="12">
-                            <MudText Typo="Typo.body2" Class="mb-2">Poză de profil (obligatoriu):</MudText>
-                            <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px;">
-                                <InputFile OnChange="OnImageSelected" />
-                                <MudAvatar Size="Size.Large">
-                                    @if (!string.IsNullOrEmpty(_previewImageUrl))
+                            <MudItem xs="12">
+                                <MudButton ButtonType="ButtonType.Submit"
+                                           Disabled="_submitting"
+                                           FullWidth="true"
+                                           Class="admin-submit-btn">
+                                    @if (_submitting)
                                     {
-                                        <MudImage Src="@_previewImageUrl" Alt="preview" Style="width:80px;height:80px;object-fit:cover;border-radius:50%;" />
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" Style="color:#0b1622;" />
+                                        <span>Se adaugă...</span>
                                     }
                                     else
                                     {
-                                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Large" Style="font-size:80px;color:#ccc;" />
+                                        <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Class="mr-2" />
+                                        <span>Adaugă Frizer</span>
                                     }
-                                </MudAvatar>
-                            </div>
-                            @if (!string.IsNullOrEmpty(_imageError))
+                                </MudButton>
+                            </MudItem>
+                        </MudGrid>
+                    </EditForm>
+                </div>
+            }
+
+            @* ══ Tab 1: Utilizatori ══ *@
+            @if (_activeTab == 1)
+            {
+                <div class="admin-panel">
+                    <div class="panel-title-row mb-5">
+                        <MudText Typo="Typo.h6" Class="panel-title">
+                            <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" Style="color:#F5A623; vertical-align:middle;" />
+                            Toți Utilizatorii
+                        </MudText>
+                        <span class="panel-count">@_users.Count înregistrați</span>
+                    </div>
+
+                    @if (_loadingUsers)
+                    {
+                        <MudStack AlignItems="AlignItems.Center" Class="py-8">
+                            <MudProgressCircular Color="Color.Warning" Indeterminate="true" />
+                        </MudStack>
+                    }
+                    else if (_users.Any())
+                    {
+                        <div class="admin-table-wrap">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Utilizator</th>
+                                        <th>Email</th>
+                                        <th>Telefon</th>
+                                        <th>Rol</th>
+                                        <th>Data Creării</th>
+                                        <th>Acțiuni</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var user in _users)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="table-user-cell">
+                                                    <div class="table-avatar">@user.Name[0]</div>
+                                                    <span>@user.Name</span>
+                                                </div>
+                                            </td>
+                                            <td style="color:#8fa3ba;">@user.Email</td>
+                                            <td style="color:#8fa3ba;">@(user.PhoneNumber ?? "—")</td>
+                                            <td>
+                                                <span class="role-badge role-@user.Role.ToLower()">@user.Role</span>
+                                            </td>
+                                            <td style="color:#8fa3ba;">@user.CreatedAtUtc.ToString("dd.MM.yyyy")</td>
+                                            <td>
+                                                <div class="table-actions">
+                                                    <MudTooltip Text="Detalii">
+                                                        <MudIconButton Icon="@Icons.Material.Filled.Info"
+                                                                       Size="Size.Small"
+                                                                       Style="color:#8fa3ba;"
+                                                                       OnClick="() => ShowUserDetails(user)" />
+                                                    </MudTooltip>
+                                                    <MudTooltip Text="Șterge">
+                                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                                       Size="Size.Small"
+                                                                       Style="color:#ef5350;"
+                                                                       OnClick="() => DeleteUser(user.Id)" />
+                                                    </MudTooltip>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="admin-empty">
+                            <MudIcon Icon="@Icons.Material.Outlined.PeopleAlt" Style="font-size:3rem; color:#2a4a6a;" />
+                            <MudText Style="color:#8fa3ba;" Class="mt-2">Nu există utilizatori înregistrați.</MudText>
+                        </div>
+                    }
+                </div>
+            }
+
+            @* ══ Tab 2: Frizeri ══ *@
+            @if (_activeTab == 2)
+            {
+                <div class="admin-panel">
+                    <div class="panel-title-row mb-5">
+                        <MudText Typo="Typo.h6" Class="panel-title">
+                            <MudIcon Icon="@Icons.Material.Filled.ContentCut" Class="mr-2" Style="color:#F5A623; vertical-align:middle;" />
+                            Toți Frizerii
+                        </MudText>
+                        <span class="panel-count">@_barbers.Count frizeri</span>
+                    </div>
+
+                    @if (_loadingBarbers)
+                    {
+                        <MudStack AlignItems="AlignItems.Center" Class="py-8">
+                            <MudProgressCircular Color="Color.Warning" Indeterminate="true" />
+                        </MudStack>
+                    }
+                    else if (_barbers.Any())
+                    {
+                        <div class="admin-barbers-grid">
+                            @foreach (var barber in _barbers)
                             {
-                                <MudAlert Severity="Severity.Error">@_imageError</MudAlert>
+                                <div class="admin-barber-card">
+                                    <div class="abc-left">
+                                        @if (!string.IsNullOrEmpty(barber.PhotoUrl))
+                                        {
+                                            <img src="@barber.PhotoUrl" alt="@barber.Name" class="abc-avatar-img" />
+                                        }
+                                        else
+                                        {
+                                            <div class="abc-avatar-placeholder">@barber.Name[0]</div>
+                                        }
+                                        <span class="abc-status @(barber.IsActive ? "active" : "inactive")">
+                                            @(barber.IsActive ? "Activ" : "Inactiv")
+                                        </span>
+                                    </div>
+                                    <div class="abc-body">
+                                        <MudText Typo="Typo.subtitle1" Style="font-weight:700; color:#f0f4f8;">@barber.Name</MudText>
+                                        <MudText Typo="Typo.caption" Style="color:#8fa3ba;">@barber.Email</MudText>
+                                        <MudText Typo="Typo.caption" Style="color:#8fa3ba;">@barber.PhoneNumber</MudText>
+                                        <div class="abc-services mt-2">
+                                            @foreach (var svc in barber.Services.Take(3))
+                                            {
+                                                <span class="abc-svc-chip">@svc.Name</span>
+                                            }
+                                            @if (barber.Services.Count > 3)
+                                            {
+                                                <span class="abc-svc-chip abc-svc-more">+@(barber.Services.Count - 3)</span>
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="abc-actions">
+                                        <MudTooltip Text="Detalii">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Info"
+                                                           Size="Size.Small"
+                                                           Style="color:#8fa3ba;"
+                                                           OnClick="() => ShowBarberDetails(barber)" />
+                                        </MudTooltip>
+                                        <MudTooltip Text="Șterge">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                           Size="Size.Small"
+                                                           Style="color:#ef5350;"
+                                                           OnClick="() => DeleteBarber(barber.Id)" />
+                                        </MudTooltip>
+                                    </div>
+                                </div>
                             }
-                        </MudItem>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="admin-empty">
+                            <MudIcon Icon="@Icons.Material.Outlined.ContentCut" Style="font-size:3rem; color:#2a4a6a;" />
+                            <MudText Style="color:#8fa3ba;" Class="mt-2">Nu există frizeri înregistrați.</MudText>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </MudContainer>
+</div>
 
-                        <MudItem xs="12">
-                            <MudButton ButtonType="ButtonType.Submit" 
-                                       Variant="Variant.Filled" 
-                                       Color="Color.Primary"
-                                       Disabled="_submitting"
-                                       FullWidth="true">
-                                @if (_submitting)
-                                {
-                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                                    <span>Se adaugă...</span>
-                                }
-                                else
-                                {
-                                    <span>Adaugă Frizer</span>
-                                }
-                            </MudButton>
-                        </MudItem>
-                    </MudGrid>
-                </EditForm>
-            </MudPaper>
-        </MudTabPanel>
-
-        <!-- Tab 2: Vezi Utilizatori -->
-        <MudTabPanel Text="Utilizatori" Icon="@Icons.Material.Filled.People">
-            <MudPaper Class="pa-6">
-                <MudText Typo="Typo.h5" Class="mb-4">Toți Utilizatorii</MudText>
-
-                @if (_loadingUsers)
-                {
-                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
-                }
-                else if (_users.Any())
-                {
-                    <MudTable Items="@_users" Hover="true" Breakpoint="Breakpoint.Sm" Dense="true">
-                        <HeaderContent>
-                            <MudTh>Nume</MudTh>
-                            <MudTh>Email</MudTh>
-                            <MudTh>Telefon</MudTh>
-                            <MudTh>Rol</MudTh>
-                            <MudTh>Data Creării</MudTh>
-                            <MudTh>Acțiuni</MudTh>
-                        </HeaderContent>
-                        <RowTemplate>
-                            <MudTd DataLabel="Nume">@context.Name</MudTd>
-                            <MudTd DataLabel="Email">@context.Email</MudTd>
-                            <MudTd DataLabel="Telefon">@context.PhoneNumber</MudTd>
-                            <MudTd DataLabel="Rol">
-                                <MudChip T="string" Size="Size.Small" Color="@GetRoleColor(context.Role)">@context.Role</MudChip>
-                            </MudTd>
-                            <MudTd DataLabel="Data Creării">@context.CreatedAtUtc.ToString("dd.MM.yyyy")</MudTd>
-                            <MudTd DataLabel="Acțiuni">
-                                <MudTooltip Text="Vezi detalii">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Info" 
-                                                   Color="Color.Info" 
-                                                   Size="Size.Small"
-                                                   OnClick="() => ShowUserDetails(context)" />
-                                </MudTooltip>
-                                <MudTooltip Text="Șterge utilizator">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
-                                                   Color="Color.Error" 
-                                                   Size="Size.Small"
-                                                   OnClick="() => DeleteUser(context.Id)" />
-                                </MudTooltip>
-                            </MudTd>
-                        </RowTemplate>
-                    </MudTable>
-                }
-                else
-                {
-                    <MudAlert Severity="Severity.Info">Nu există utilizatori înregistrați.</MudAlert>
-                }
-            </MudPaper>
-        </MudTabPanel>
-
-        <!-- Tab 3: Vezi Frizeri -->
-        <MudTabPanel Text="Frizeri" Icon="@Icons.Material.Filled.ContentCut">
-            <MudPaper Class="pa-6">
-                <MudText Typo="Typo.h5" Class="mb-4">Toți Frizerii</MudText>
-
-                @if (_loadingBarbers)
-                {
-                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
-                }
-                else if (_barbers.Any())
-                {
-                    <MudTable Items="@_barbers" Hover="true" Breakpoint="Breakpoint.Sm" Dense="true">
-                        <HeaderContent>
-                            <MudTh>Nume</MudTh>
-                            <MudTh>Email</MudTh>
-                            <MudTh>Telefon</MudTh>
-                            <MudTh>Servicii</MudTh>
-                            <MudTh>Status</MudTh>
-                            <MudTh>Acțiuni</MudTh>
-                        </HeaderContent>
-                        <RowTemplate>
-                            <MudTd DataLabel="Nume">@context.Name</MudTd>
-                            <MudTd DataLabel="Email">@context.Email</MudTd>
-                            <MudTd DataLabel="Telefon">@context.PhoneNumber</MudTd>
-                            <MudTd DataLabel="Servicii">
-                                <MudChip T="string" Size="Size.Small" Color="Color.Primary">@context.Services.Count servicii</MudChip>
-                            </MudTd>
-                            <MudTd DataLabel="Status">
-                                <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Error)">
-                                    @(context.IsActive ? "Activ" : "Inactiv")
-                                </MudChip>
-                            </MudTd>
-                            <MudTd DataLabel="Acțiuni">
-                                <MudTooltip Text="Vezi detalii">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Info" 
-                                                   Color="Color.Info" 
-                                                   Size="Size.Small"
-                                                   OnClick="() => ShowBarberDetails(context)" />
-                                </MudTooltip>
-                                <MudTooltip Text="Șterge frizer">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
-                                                   Color="Color.Error" 
-                                                   Size="Size.Small"
-                                                   OnClick="() => DeleteBarber(context.Id)" />
-                                </MudTooltip>
-                            </MudTd>
-                        </RowTemplate>
-                    </MudTable>
-                }
-                else
-                {
-                    <MudAlert Severity="Severity.Info">Nu există frizeri înregistrați.</MudAlert>
-                }
-            </MudPaper>
-        </MudTabPanel>
-    </MudTabs>
-</MudContainer>
-
-<!-- Dialog pentru detalii utilizator -->
+@* ── Dialog: detalii utilizator ── *@
 <MudDialog @bind-IsVisible="_showUserDialog" Options="_dialogOptions">
     <TitleContent>
-        <MudText Typo="Typo.h6">Detalii Utilizator</MudText>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.AccountCircle" Style="color:#F5A623;" />
+            <MudText Typo="Typo.h6" Style="color:#f0f4f8;">Detalii Utilizator</MudText>
+        </MudStack>
     </TitleContent>
     <DialogContent>
         @if (_selectedUser != null)
         {
-            <MudGrid>
-                <MudItem xs="12">
-                    <MudText><strong>ID:</strong> @_selectedUser.Id</MudText>
-                </MudItem>
-                <MudItem xs="12">
-                    <MudText><strong>Nume:</strong> @_selectedUser.Name</MudText>
-                </MudItem>
-                <MudItem xs="12">
-                    <MudText><strong>Email:</strong> @_selectedUser.Email</MudText>
-                </MudItem>
-                <MudItem xs="12">
-                    <MudText><strong>Telefon:</strong> @(_selectedUser.PhoneNumber ?? "N/A")</MudText>
-                </MudItem>
-                <MudItem xs="12">
-                    <MudText><strong>Rol:</strong> @_selectedUser.Role</MudText>
-                </MudItem>
-                <MudItem xs="12">
-                    <MudText><strong>Data Creării:</strong> @_selectedUser.CreatedAtUtc.ToString("dd.MM.yyyy HH:mm")</MudText>
-                </MudItem>
-            </MudGrid>
+            <div class="detail-rows">
+                <div class="detail-row"><span class="detail-label">ID</span><span class="detail-value" style="font-size:0.75rem;">@_selectedUser.Id</span></div>
+                <div class="detail-row"><span class="detail-label">Nume</span><span class="detail-value">@_selectedUser.Name</span></div>
+                <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value">@_selectedUser.Email</span></div>
+                <div class="detail-row"><span class="detail-label">Telefon</span><span class="detail-value">@(_selectedUser.PhoneNumber ?? "—")</span></div>
+                <div class="detail-row"><span class="detail-label">Rol</span><span class="role-badge role-@_selectedUser.Role.ToLower()">@_selectedUser.Role</span></div>
+                <div class="detail-row"><span class="detail-label">Creat la</span><span class="detail-value">@_selectedUser.CreatedAtUtc.ToString("dd.MM.yyyy HH:mm")</span></div>
+            </div>
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="() => _showUserDialog = false">Închide</MudButton>
+        <button class="dialog-close-btn" @onclick="() => _showUserDialog = false">Închide</button>
     </DialogActions>
 </MudDialog>
 
-<!-- Dialog pentru detalii frizer -->
+@* ── Dialog: detalii frizer ── *@
 <MudDialog @bind-IsVisible="_showBarberDialog" Options="_dialogOptions">
     <TitleContent>
-        <MudText Typo="Typo.h6">Detalii Frizer</MudText>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.ContentCut" Style="color:#F5A623;" />
+            <MudText Typo="Typo.h6" Style="color:#f0f4f8;">Detalii Frizer</MudText>
+        </MudStack>
     </TitleContent>
     <DialogContent>
         @if (_selectedBarber != null)
         {
-            <MudGrid>
-                <MudItem xs="12">
-                    <MudText><strong>ID:</strong> @_selectedBarber.Id</MudText>
-                </MudItem>
-                <MudItem xs="12">
-                    <MudText><strong>Nume:</strong> @_selectedBarber.Name</MudText>
-                </MudItem>
-                <MudItem xs="12">
-                    <MudText><strong>Email:</strong> @_selectedBarber.Email</MudText>
-                </MudItem>
-                <MudItem xs="12">
-                    <MudText><strong>Telefon:</strong> @_selectedBarber.PhoneNumber</MudText>
-                </MudItem>
-                <MudItem xs="12">
-                    <MudText><strong>Descriere:</strong> @_selectedBarber.Description</MudText>
-                </MudItem>
-                <MudItem xs="12">
-                    <MudText Typo="Typo.h6" Class="mt-2 mb-2">Servicii Oferite:</MudText>
-                    @foreach (var service in _selectedBarber.Services)
-                    {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="mr-1 mb-1">
-                            @service.Name - @service.Price RON (@service.DurationMinutes min)
-                        </MudChip>
-                    }
-                </MudItem>
-            </MudGrid>
+            <div class="detail-rows">
+                <div class="detail-row"><span class="detail-label">Nume</span><span class="detail-value">@_selectedBarber.Name</span></div>
+                <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value">@_selectedBarber.Email</span></div>
+                <div class="detail-row"><span class="detail-label">Telefon</span><span class="detail-value">@_selectedBarber.PhoneNumber</span></div>
+                <div class="detail-row"><span class="detail-label">Descriere</span><span class="detail-value">@_selectedBarber.Description</span></div>
+            </div>
+            <MudText Typo="Typo.subtitle2" Style="color:#F5A623; font-weight:700;" Class="mt-4 mb-2">Servicii Oferite</MudText>
+            <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                @foreach (var service in _selectedBarber.Services)
+                {
+                    <span class="abc-svc-chip">@service.Name — @service.Price lei (@service.DurationMinutes min)</span>
+                }
+            </div>
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="() => _showBarberDialog = false">Închide</MudButton>
+        <button class="dialog-close-btn" @onclick="() => _showBarberDialog = false">Închide</button>
     </DialogActions>
 </MudDialog>
 
 @code {
+    private int _activeTab = 0;
+
     // Add Barber
     private CreateBarberRequest _barberModel = new();
     private bool _submitting = false;
@@ -373,6 +472,14 @@
         _errorMessage = null;
         _successMessage = null;
 
+        // Validare parolele coincid
+        if (_barberModel.Password != _barberModel.ConfirmPassword)
+        {
+            _errorMessage = "Parolele nu coincid!";
+            _submitting = false;
+            return;
+        }
+
         // Validare poză obligatorie
         if (_selectedImage == null)
         {
@@ -399,8 +506,7 @@
                 _successMessage = "Frizer adăugat cu succes!";
                 _barberModel = new();
                 _selectedImage = null;
-                _previewImageUrl = null;
-                await LoadBarbersAsync();
+                _previewImageUrl = null;                await LoadBarbersAsync();
                 Snackbar.Add("Frizer adăugat cu succes!", Severity.Success);
             }
             else
@@ -552,7 +658,384 @@
         public string Email { get; set; } = string.Empty;
         public string PhoneNumber { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
+        public string ConfirmPassword { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string? PhotoUrl { get; set; }
     }
 }
+
+<style>
+    /* ── Page wrapper ── */
+    .admin-page {
+        min-height: 100vh;
+        background: var(--sc-navy, #0b1622);
+    }
+
+    /* ── Header ── */
+    .admin-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    .admin-header-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        background: rgba(245,166,35,0.12);
+        border: 1px solid rgba(245,166,35,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    /* ── Custom tab bar ── */
+    .admin-tabs-wrap {
+        background: #132236;
+        border-radius: 20px;
+        overflow: hidden;
+        border: 1px solid #1e3a56;
+    }
+    .admin-tab-btns {
+        display: flex;
+        gap: 0;
+        border-bottom: 1px solid #1e3a56;
+        background: #0d1b2a;
+    }
+    .admin-tab-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 24px;
+        background: transparent;
+        border: none;
+        color: #8fa3ba;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        position: relative;
+        transition: color 0.2s;
+    }
+    .admin-tab-btn .tab-icon {
+        font-size: 1.1rem !important;
+    }
+    .admin-tab-btn::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: #F5A623;
+        transform: scaleX(0);
+        transition: transform 0.2s;
+    }
+    .admin-tab-btn.active {
+        color: #F5A623;
+    }
+    .admin-tab-btn.active::after {
+        transform: scaleX(1);
+    }
+    .admin-tab-btn:hover:not(.active) {
+        color: #f0f4f8;
+    }
+    .tab-badge {
+        background: #F5A623;
+        color: #0b1622;
+        font-size: 0.7rem;
+        font-weight: 800;
+        border-radius: 10px;
+        padding: 1px 7px;
+        margin-left: 2px;
+    }
+
+    /* ── Panel ── */
+    .admin-panel {
+        padding: 28px 32px;
+    }
+    .panel-title {
+        color: #f0f4f8;
+        font-weight: 700;
+    }
+    .panel-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .panel-count {
+        background: rgba(245,166,35,0.12);
+        border: 1px solid rgba(245,166,35,0.3);
+        color: #F5A623;
+        font-size: 0.8rem;
+        font-weight: 700;
+        border-radius: 20px;
+        padding: 4px 14px;
+    }
+
+    /* ── Photo upload ── */
+    .photo-upload-area {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        background: rgba(255,255,255,0.03);
+        border: 2px dashed #2a4a6a;
+        border-radius: 14px;
+        padding: 20px;
+        transition: border-color 0.2s;
+    }
+    .photo-upload-area:hover {
+        border-color: #F5A623;
+    }
+    .photo-preview {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        border: 3px solid #F5A623;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #0d1b2a;
+        flex-shrink: 0;
+    }
+    .photo-preview-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .upload-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: rgba(245,166,35,0.12);
+        border: 1px solid rgba(245,166,35,0.4);
+        color: #F5A623;
+        font-size: 0.85rem;
+        font-weight: 600;
+        border-radius: 8px;
+        padding: 8px 16px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .upload-btn:hover {
+        background: rgba(245,166,35,0.22);
+    }
+
+    /* ── Submit button ── */
+    .admin-submit-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(135deg, #F5A623, #e6921a);
+        color: #0b1622;
+        font-size: 0.95rem;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        text-transform: uppercase;
+        transition: all 0.2s;
+        box-shadow: 0 4px 16px rgba(245,166,35,0.3);
+    }
+    .admin-submit-btn:hover:not(:disabled) {
+        background: linear-gradient(135deg, #FFD700, #F5A623);
+        box-shadow: 0 6px 24px rgba(245,166,35,0.45);
+        transform: translateY(-1px);
+    }
+    .admin-submit-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    /* ── Custom table ── */
+    .admin-table-wrap {
+        overflow-x: auto;
+        border-radius: 12px;
+        border: 1px solid #1e3a56;
+    }
+    .admin-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+    .admin-table thead tr {
+        background: #0d1b2a;
+    }
+    .admin-table th {
+        padding: 12px 16px;
+        text-align: left;
+        color: #8fa3ba;
+        font-weight: 700;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid #1e3a56;
+        white-space: nowrap;
+    }
+    .admin-table tbody tr {
+        border-bottom: 1px solid rgba(30,58,86,0.5);
+        transition: background 0.15s;
+    }
+    .admin-table tbody tr:hover {
+        background: rgba(245,166,35,0.04);
+    }
+    .admin-table td {
+        padding: 12px 16px;
+        color: #f0f4f8;
+        vertical-align: middle;
+    }
+    .table-user-cell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 600;
+    }
+    .table-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #F5A623, #e6921a);
+        color: #0b1622;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        flex-shrink: 0;
+    }
+    .table-actions {
+        display: flex;
+        gap: 4px;
+    }
+
+    /* ── Role badges ── */
+    .role-badge {
+        display: inline-block;
+        border-radius: 20px;
+        padding: 3px 10px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    .role-admin    { background: rgba(239,83,80,0.15);  border: 1px solid rgba(239,83,80,0.5);   color: #ef5350; }
+    .role-barber   { background: rgba(245,166,35,0.12); border: 1px solid rgba(245,166,35,0.4);  color: #F5A623; }
+    .role-customer { background: rgba(26,178,151,0.12); border: 1px solid rgba(26,178,151,0.4);  color: #1ab297; }
+
+    /* ── Barber cards in Tab 2 ── */
+    .admin-barbers-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .admin-barber-card {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid #1e3a56;
+        border-radius: 14px;
+        padding: 16px 20px;
+        transition: border-color 0.2s, background 0.2s;
+    }
+    .admin-barber-card:hover {
+        border-color: rgba(245,166,35,0.4);
+        background: rgba(245,166,35,0.04);
+    }
+    .abc-left {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        min-width: 70px;
+    }
+    .abc-avatar-img {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #F5A623;
+    }
+    .abc-avatar-placeholder {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #F5A623, #e6921a);
+        color: #0b1622;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+    .abc-status {
+        font-size: 0.65rem;
+        font-weight: 700;
+        border-radius: 10px;
+        padding: 2px 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    .abc-status.active   { background: rgba(26,178,151,0.15); color: #1ab297; border: 1px solid rgba(26,178,151,0.4); }
+    .abc-status.inactive { background: rgba(239,83,80,0.15);  color: #ef5350; border: 1px solid rgba(239,83,80,0.4);  }
+    .abc-body { flex: 1; min-width: 0; }
+    .abc-services { display: flex; flex-wrap: wrap; gap: 6px; }
+    .abc-svc-chip {
+        display: inline-block;
+        background: rgba(245,166,35,0.08);
+        border: 1px solid rgba(245,166,35,0.25);
+        color: #8fa3ba;
+        font-size: 0.75rem;
+        border-radius: 20px;
+        padding: 3px 10px;
+    }
+    .abc-svc-more {
+        background: rgba(245,166,35,0.15);
+        color: #F5A623;
+    }
+    .abc-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    /* ── Empty state ── */
+    .admin-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 48px 24px;
+    }
+
+    /* ── Dialog detail rows ── */
+    .detail-rows { display: flex; flex-direction: column; gap: 10px; }
+    .detail-row  { display: flex; align-items: baseline; gap: 10px; }
+    .detail-label {
+        min-width: 90px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: #8fa3ba;
+    }
+    .detail-value { color: #f0f4f8; font-size: 0.9rem; }
+    .dialog-close-btn {
+        background: rgba(245,166,35,0.12);
+        border: 1px solid rgba(245,166,35,0.35);
+        color: #F5A623;
+        font-weight: 700;
+        border-radius: 8px;
+        padding: 8px 20px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .dialog-close-btn:hover { background: rgba(245,166,35,0.22); }
+</style>

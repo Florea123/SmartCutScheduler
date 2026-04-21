@@ -76,7 +76,16 @@ public class AuthService : IAuthService
 
         var response = await _api.GetAsync("/api/profile");
         if (!response.IsSuccessStatusCode)
+        {
+            if ((int)response.StatusCode == 401)
+            {
+                // Token expired or invalid — clear it silently
+                await _localStorage.RemoveItemAsync("accessToken");
+                await _localStorage.RemoveItemAsync("refreshToken");
+                ((CustomAuthStateProvider)_authStateProvider).NotifyUserLogout();
+            }
             return null;
+        }
         return await response.Content.ReadFromJsonAsync<UserDto>();
     }
 }

@@ -36,7 +36,9 @@ public class GetBarberQueryHandler(IBarberRepository barberRepository)
                 ws.StartTime,
                 ws.EndTime,
                 ws.IsWorkingDay
-            }).ToList()
+            }).ToList(),
+            AverageRating = barber.Reviews.Any() ? Math.Round(barber.Reviews.Average(r => r.Rating), 1) : 0,
+            ReviewCount = barber.Reviews.Count
         };
 
         return Results.Ok(result);
