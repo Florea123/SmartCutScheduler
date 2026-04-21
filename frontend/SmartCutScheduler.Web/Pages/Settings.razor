@@ -1,8 +1,10 @@
 ﻿@page "/settings"
 @using SmartCutScheduler.Web.Models
+@using Microsoft.Extensions.Http
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@inject IHttpClientFactory HttpClientFactory
 
 <PageTitle>Setari profil – SmartCut Scheduler</PageTitle>
 
@@ -78,6 +80,47 @@
             </MudButton>
         </MudPaper>
     }
+
+    @* ── Google Calendar section ── *@
+    <MudPaper Class="pa-6 mt-6" Elevation="0"
+              Style="background:#132236; border:1px solid #1e3a56; border-radius:20px;">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4">
+            <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Style="color:#F5A623;" />
+            <MudText Typo="Typo.h6" Style="font-weight:700; color:#f0f4f8;">Google Calendar</MudText>
+        </MudStack>
+        <MudText Typo="Typo.body2" Style="color:#8fa3ba;" Class="mb-4">
+            Conecteaza contul Google pentru ca AI-ul sa evite programarile care se suprapun cu
+            evenimentele tale din calendar.
+        </MudText>
+
+        @if (_calendarLoading)
+        {
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (_calendarConnected)
+        {
+            <MudAlert Severity="Severity.Success" Dense="true" Class="mb-4"
+                      Style="background:#0d3320; border:1px solid #1e6b3a; border-radius:12px; color:#4caf50;">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Class="mr-1" />
+                Calendar conectat! AI-ul va evita conflictele cu evenimentele tale.
+            </MudAlert>
+            <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                       Style="border-color:#f44336; color:#f44336; border-radius:50px;"
+                       OnClick="DisconnectCalendar">
+                <MudIcon Icon="@Icons.Material.Filled.LinkOff" Class="mr-1" />
+                Deconecteaza Google Calendar
+            </MudButton>
+        }
+        else
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Medium"
+                       Style="font-weight:700; color:#000; border-radius:50px;"
+                       OnClick="ConnectCalendar">
+                <MudIcon Icon="@Icons.Material.Filled.Link" Class="mr-1" />
+                Conecteaza Google Calendar
+            </MudButton>
+        }
+    </MudPaper>
 </MudContainer>
 
 @code {
@@ -88,6 +131,10 @@
     private string? _imageError;
     private string? _previewImageUrl;
 
+    // Google Calendar state
+    private bool _calendarConnected = false;
+    private bool _calendarLoading = false;
+
     [Inject] private IApiService ApiService { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
@@ -95,7 +142,87 @@
         _user = await AuthService.GetCurrentUserAsync();
         _isBarber = _user?.Role == "Barber";
         _loading = false;
+
+        // Check calendar connection status from query string (redirect after OAuth)
+        var uri = new Uri(Navigation.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("calendar", out var val) && val == "connected")
+        {
+            _calendarConnected = true;
+            Snackbar.Add("Google Calendar conectat cu succes!", Severity.Success);
+        }
+        else
+        {
+            await CheckCalendarStatus();
+        }
     }
+
+    private async Task CheckCalendarStatus()
+    {
+        if (_user == null) return;
+        _calendarLoading = true;
+        try
+        {
+            var client = HttpClientFactory.CreateClient("AiService");
+            var response = await client.GetAsync($"/calendar/status?user_id={_user.Id}");
+            if (response.IsSuccessStatusCode)
+            {
+                var data = await response.Content.ReadFromJsonAsync<CalendarStatusDto>();
+                _calendarConnected = data?.Connected ?? false;
+            }
+        }
+        catch { /* AI service may not be running — silently ignore */ }
+        finally
+        {
+            _calendarLoading = false;
+        }
+    }
+
+    private async Task ConnectCalendar()
+    {
+        if (_user == null) return;
+        try
+        {
+            var client = HttpClientFactory.CreateClient("AiService");
+            var response = await client.GetAsync($"/calendar/connect?user_id={_user.Id}");
+            if (response.IsSuccessStatusCode)
+            {
+                var data = await response.Content.ReadFromJsonAsync<CalendarConnectDto>();
+                if (!string.IsNullOrEmpty(data?.AuthUrl))
+                    Navigation.NavigateTo(data.AuthUrl, forceLoad: true);
+            }
+            else
+            {
+                Snackbar.Add("Integrarea Google Calendar nu este configurata pe server.", Severity.Warning);
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Serviciul AI nu este disponibil momentan.", Severity.Error);
+        }
+    }
+
+    private async Task DisconnectCalendar()
+    {
+        if (_user == null) return;
+        try
+        {
+            var client = HttpClientFactory.CreateClient("AiService");
+            var response = await client.DeleteAsync($"/calendar/disconnect?user_id={_user.Id}");
+            if (response.IsSuccessStatusCode)
+            {
+                _calendarConnected = false;
+                Snackbar.Add("Google Calendar deconectat.", Severity.Info);
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Eroare la deconectare. Incearca din nou.", Severity.Error);
+        }
+    }
+
+    private record CalendarStatusDto(bool Connected);
+    private record CalendarConnectDto(string AuthUrl);
 
     private string? FixProfileImageUrl(string? url)
     {

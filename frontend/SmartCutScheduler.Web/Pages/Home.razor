@@ -1,9 +1,14 @@
 ﻿@page "/"
 @using MudBlazor
 @using MudBlazor.Services
+@using Microsoft.Extensions.Http
 @inject IBarberService BarberService
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
+@inject IAuthService AuthService
+@inject IHttpClientFactory HttpClientFactory
+@inject NotificationService NotificationService
+@inject ISnackbar Snackbar
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-10 mb-10">
 
@@ -11,9 +16,43 @@
         <MudText Typo="Typo.h3" Align="Align.Center" Class="hero-title">
             Bine ai venit la SmartCut Scheduler
         </MudText>
-        <MudText Typo="Typo.h6" Align="Align.Center" Class="hero-subtitle mt-2 mb-10">
+        <MudText Typo="Typo.h6" Align="Align.Center" Class="hero-subtitle mt-2 mb-6">
             Alege un frizer și programează-te online
         </MudText>
+
+        @* ── AI Recommendation Banner (only for logged-in Customers) ── *@
+        <AuthorizeView Roles="Customer">
+            <Authorized>
+                <div style="display:flex; justify-content:center; margin-bottom:32px;">
+                    <MudPaper Elevation="0"
+                              Style="background:linear-gradient(135deg,#0d2a1a,#132236); border:1px solid rgba(245,166,35,0.35); border-radius:20px; padding:20px 32px; display:flex; align-items:center; gap:20px; max-width:600px;">
+                        <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Style="font-size:2.2rem; color:#F5A623;" />
+                        <div style="flex:1;">
+                            <div style="font-weight:700; color:#f0f4f8; font-size:1rem;">Recomandare AI</div>
+                            <div style="color:#8fa3ba; font-size:0.82rem; margin-top:2px;">
+                                Lasa AI-ul sa iti gaseasca cel mai bun frizer disponibil maine
+                            </div>
+                        </div>
+                        <MudButton Variant="Variant.Filled"
+                                   Style="background:#F5A623; color:#000; font-weight:700; border-radius:50px; white-space:nowrap;"
+                                   Size="Size.Small"
+                                   Disabled="@_aiLoading"
+                                   OnClick="RequestAiRecommendation">
+                            @if (_aiLoading)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="color:#000;" Class="mr-1" />
+                                <span>Se proceseaza...</span>
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Small" Class="mr-1" />
+                                <span>Recomanda-mi un frizer</span>
+                            }
+                        </MudButton>
+                    </MudPaper>
+                </div>
+            </Authorized>
+        </AuthorizeView>
     </div>
 
     @if (_loading)
@@ -116,6 +155,7 @@
 @code {
     private List<BarberDto> _barbers = new();
     private bool _loading = true;
+    private bool _aiLoading = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -138,6 +178,109 @@
             _loading = false;
         }
     }
+
+    private async Task RequestAiRecommendation()
+    {
+        if (_aiLoading) return;
+        var user = await AuthService.GetCurrentUserAsync();
+        if (user == null)
+        {
+            Snackbar.Add("Trebuie sa fii autentificat.", Severity.Warning);
+            return;
+        }
+
+        _aiLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            // Build slots: 3 time slots per barber for tomorrow
+            var tomorrow = DateTime.Today.AddDays(1).ToString("yyyy-MM-dd");
+            var timeSlots = new[] {
+                ("09:00:00", "10:00:00"),
+                ("11:00:00", "12:00:00"),
+                ("14:00:00", "15:00:00")
+            };
+
+            var slots = new List<AiSlotInfo>();
+            foreach (var barber in _barbers.Where(b => b.Services.Any()))
+            {
+                var svc = barber.Services.First();
+                foreach (var (start, end) in timeSlots)
+                {
+                    slots.Add(new AiSlotInfo
+                    {
+                        barberId = barber.Id.ToString(),
+                        barberName = barber.Name,
+                        barberRating = barber.AverageRating > 0 ? barber.AverageRating : null,
+                        serviceId = svc.Id.ToString(),
+                        date = tomorrow,
+                        startTime = start,
+                        endTime = end
+                    });
+                }
+            }
+
+            if (!slots.Any())
+            {
+                Snackbar.Add("Nu sunt frizeri cu servicii disponibile.", Severity.Warning);
+                return;
+            }
+
+            var token = await GetTokenAsync();
+            var request = new AiRecommendRequest
+            {
+                userId = user.Id.ToString(),
+                availableSlots = slots,
+                city = "Iasi",
+                includeCalendar = false,
+                authToken = token
+            };
+
+            var client = HttpClientFactory.CreateClient("AiService");
+            var response = await client.PostAsJsonAsync("/recommend", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<AiRecommendResponse>();
+                if (result != null)
+                {
+                    var notification = new AiNotification
+                    {
+                        BarberName = result.recommended_slot.barber,
+                        BarberId = result.recommended_slot.barberId,
+                        SlotDate = result.recommended_slot.date,
+                        SlotTime = result.recommended_slot.time,
+                        Score = result.score_breakdown.total,
+                        Reason = result.reason,
+                        CreatedAt = DateTime.Now,
+                        IsRead = false
+                    };
+                    await NotificationService.AddAsync(notification);
+                    Snackbar.Add($"Recomandare AI: {result.recommended_slot.barber} la {result.recommended_slot.time.Substring(0, 5)} ({result.score_breakdown.total:0.0}/100)", Severity.Success);
+                }
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
+            {
+                Snackbar.Add("Serviciul AI nu este disponibil momentan.", Severity.Error);
+            }
+            else
+            {
+                Snackbar.Add("Eroare la obtinerea recomandarii AI.", Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Nu se poate contacta serviciul AI. Asigura-te ca ruleaza pe portul 8000.", Severity.Error);
+        }
+        finally
+        {
+            _aiLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private Task<string?> GetTokenAsync() => Task.FromResult<string?>(null);
 
     private void NavigateToBarberCalendar(Guid barberId)
     {

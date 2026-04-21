@@ -268,6 +268,12 @@
     [Parameter]
     public Guid BarberId { get; set; }
 
+    [SupplyParameterFromQuery(Name = "preDate")]
+    public string? PreDate { get; set; }
+
+    [SupplyParameterFromQuery(Name = "preTime")]
+    public string? PreTime { get; set; }
+
     private BarberDto? _barber;
     private List<ServiceDto> _services = new();
     private List<TimeSlotDto> _daySlots = new();
@@ -287,7 +293,29 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadBarberData();
-        GenerateCalendarDays();
+
+        // Pre-select date from notification recommendation
+        if (!string.IsNullOrWhiteSpace(PreDate) && DateTime.TryParse(PreDate, out var preDate)
+            && preDate >= DateTime.Today && preDate <= _maxDate)
+        {
+            _currentMonth = new DateTime(preDate.Year, preDate.Month, 1);
+            GenerateCalendarDays();
+            await SelectDay(preDate);
+
+            // Pre-highlight slot if preTime provided
+            if (!string.IsNullOrWhiteSpace(PreTime) && _daySlots.Any())
+            {
+                var prefix = PreTime.Length >= 5 ? PreTime.Substring(0, 5) : PreTime;
+                var match = _daySlots.FirstOrDefault(s =>
+                    s.Time.StartsWith(prefix) && !s.IsBooked);
+                if (match != null)
+                    _selectedSlot = DateTime.Parse(_selectedDate!.Value.ToString("yyyy-MM-dd") + "T" + match.Time);
+            }
+        }
+        else
+        {
+            GenerateCalendarDays();
+        }
     }
 
     private async Task LoadBarberData()

@@ -1,4 +1,29 @@
 services:
+  ai_service:
+    build:
+      context: ./ai_service
+      dockerfile: Dockerfile
+    container_name: smartcut_ai
+    env_file:
+      - ./ai_service/.env
+    environment:
+      DOTNET_API_URL: "http://api:5000"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ai_calendar_tokens:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - smartcut_network
+
   frontend:
     build:
       context: ./frontend/SmartCutScheduler.Web
@@ -44,6 +69,12 @@ services:
       - "5000:5000"
     volumes:
       - ./backend/src/SmartCutScheduler.Api/wwwroot/profile-images:/app/wwwroot/profile-images
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy
@@ -79,6 +110,7 @@ services:
 
 volumes:
   postgres_data:
+  ai_calendar_tokens:
   sonarqube_data:
   sonarqube_extensions:
   sonarqube_logs:

@@ -1,7 +1,13 @@
 ﻿@inherits LayoutComponentBase
+@implements IDisposable
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
+@inject NotificationService NotificationService
+@inject IHttpClientFactory HttpClientFactory
+@inject IAppointmentService AppointmentService
+@inject ISnackbar Snackbar
+@using Microsoft.Extensions.Http
 
 <MudLayout>
     <MudAppBar Elevation="0" Style="background:#0d1b2a; border-bottom:1px solid #1e3a56;">
@@ -16,6 +22,83 @@
         <AuthorizeView>
             <Authorized Context="authContext">
                 <AuthorizeView Roles="Customer,Barber">
+                    @* ── Notification Bell ── *@
+                    <div class="notif-bell-wrapper" style="position:relative; display:inline-flex; align-items:center;">
+                        <MudBadge Content="@_unreadCount" Color="Color.Error" Overlap="true"
+                                  Visible="@(_unreadCount > 0)" BadgeClass="notif-badge-pos">
+                            <MudTooltip Text="Notificari AI">
+                                <MudIconButton Icon="@Icons.Material.Filled.Notifications"
+                                               Color="Color.Inherit"
+                                               Style="color:#8fa3ba;"
+                                               OnClick="ToggleNotifications" />
+                            </MudTooltip>
+                        </MudBadge>
+                        @if (_notificationsOpen)
+                        {
+                            <div class="notification-panel" @onclick:stopPropagation="true">
+                                <div class="notif-header">
+                                    <span style="font-weight:700; color:#f0f4f8; font-size:0.95rem;">Recomandari AI</span>
+                                    <div style="display:flex; gap:8px; align-items:center;">
+                                        @if (_notifications.Any(n => !n.IsRead))
+                                        {
+                                            <MudTooltip Text="Marcheaza toate citite">
+                                                <MudIconButton Icon="@Icons.Material.Filled.DoneAll"
+                                                               Size="Size.Small"
+                                                               Style="color:#8fa3ba;"
+                                                               OnClick="MarkAllRead" />
+                                            </MudTooltip>
+                                        }
+                                        @if (_notifications.Any())
+                                        {
+                                            <MudTooltip Text="Sterge toate">
+                                                <MudIconButton Icon="@Icons.Material.Filled.DeleteSweep"
+                                                               Size="Size.Small"
+                                                               Style="color:#8fa3ba;"
+                                                               OnClick="ClearAll" />
+                                            </MudTooltip>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="notif-list">
+                                    @if (!_notifications.Any())
+                                    {
+                                        <div class="notif-empty">
+                                            <MudIcon Icon="@Icons.Material.Filled.SmartToy" Style="font-size:2.5rem; color:#2a4a6a; margin-bottom:8px;" />
+                                            <div style="color:#8fa3ba; font-size:0.85rem;">Nicio recomandare AI deocamdata.</div>
+                                            <div style="color:#5a7a9a; font-size:0.8rem; margin-top:4px;">Apasa "Recomanda-mi un frizer" pe pagina principala.</div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var notif in _notifications)
+                                        {
+                                            <div class="@(notif.IsRead ? "notif-item notif-read" : "notif-item notif-unread")"
+                                                 @onclick="() => OpenNotificationDetail(notif)">
+                                                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
+                                                    <span style="font-weight:700; color:#F5A623; font-size:0.9rem;">
+                                                        <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Small" Class="mr-1" />
+                                                        @notif.BarberName
+                                                    </span>
+                                                    <span style="font-size:0.75rem; color:#5a7a9a;">@notif.CreatedAt.ToString("dd MMM HH:mm")</span>
+                                                </div>
+                                                <div style="font-size:0.8rem; color:#8fa3ba; margin-bottom:4px;">
+                                                    📅 @notif.SlotDate &nbsp;⏰ @notif.SlotTime.Substring(0, 5)
+                                                    &nbsp;<span style="color:#4caf50; font-weight:600;">@notif.Score.ToString("0.0")/100</span>
+                                                </div>
+                                                <div style="font-size:0.78rem; color:#6a8aaa; font-style:italic; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">
+                                                    @notif.Reason
+                                                </div>
+                                                @if (!notif.IsRead)
+                                                {
+                                                    <div style="width:8px; height:8px; background:#F5A623; border-radius:50%; position:absolute; top:10px; right:10px;"></div>
+                                                }
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
                     <MudTooltip Text="Setari profil">
                         <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" OnClick="GoToSettings" Style="color:#8fa3ba;" />
                     </MudTooltip>
@@ -77,6 +160,62 @@
     </MudMainContent>
 </MudLayout>
 
+@* ── Notification Detail Dialog ── *@
+@if (_selectedNotification != null)
+{
+    <MudOverlay Visible="@_detailOpen" OnClick="CloseDetail" DarkBackground="true" ZIndex="1500" />
+    <div class="notif-detail-modal" style="z-index:1501;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
+            <div>
+                <div style="font-size:0.75rem; color:#F5A623; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:4px;">
+                    <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Small" Class="mr-1" />
+                    Recomandare AI
+                </div>
+                <div style="font-size:1.25rem; font-weight:800; color:#f0f4f8;">@_selectedNotification.BarberName</div>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="CloseDetail" Style="color:#8fa3ba;" Size="Size.Small" />
+        </div>
+
+        <div style="background:#0d1b2a; border-radius:12px; padding:16px; margin-bottom:16px; border:1px solid #1e3a56;">
+            <div style="display:flex; gap:24px; flex-wrap:wrap;">
+                <div>
+                    <div style="font-size:0.7rem; color:#5a7a9a; text-transform:uppercase; letter-spacing:1px;">Data</div>
+                    <div style="font-weight:700; color:#f0f4f8; margin-top:2px;">@_selectedNotification.SlotDate</div>
+                </div>
+                <div>
+                    <div style="font-size:0.7rem; color:#5a7a9a; text-transform:uppercase; letter-spacing:1px;">Ora</div>
+                    <div style="font-weight:700; color:#f0f4f8; margin-top:2px;">@_selectedNotification.SlotTime.Substring(0, 5)</div>
+                </div>
+                <div>
+                    <div style="font-size:0.7rem; color:#5a7a9a; text-transform:uppercase; letter-spacing:1px;">Scor AI</div>
+                    <div style="font-weight:700; color:#4caf50; font-size:1.1rem; margin-top:2px;">@_selectedNotification.Score.ToString("0.0")/100</div>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-bottom:20px;">
+            <div style="font-size:0.75rem; color:#5a7a9a; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Motivul recomandat de AI</div>
+            <div style="font-size:0.9rem; color:#c0d4e8; line-height:1.6; background:#0d1b2a; border-radius:10px; padding:14px; border-left:3px solid #F5A623;">
+                @_selectedNotification.Reason
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <MudButton Variant="Variant.Filled"
+                       Style="background:#F5A623; color:#000; font-weight:700; border-radius:50px; flex:1;"
+                       OnClick="GoToBarberFromDetail">
+                <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Class="mr-2" Size="Size.Small" />
+                Mergi la programare
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       Style="border-color:#2a4a6a; color:#8fa3ba; border-radius:50px;"
+                       OnClick="CloseDetail">
+                Inchide
+            </MudButton>
+        </div>
+    </div>
+}
+
 <style>
     .mud-nav-link {
         border-radius: 10px !important;
@@ -95,36 +234,245 @@
         color: #F5A623 !important;
         font-weight: 700 !important;
     }
+
+    /* Badge position fix — bring closer to bell icon */
+    .notif-bell-wrapper .mud-badge-root {
+        top: 4px !important;
+        right: 4px !important;
+    }
+    .notif-badge-pos {
+        top: 4px !important;
+        right: 4px !important;
+        min-width: 18px !important;
+        height: 18px !important;
+        font-size: 0.65rem !important;
+    }
+
+    /* Notification panel */
+    .notification-panel {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        width: 360px;
+        background: #132236;
+        border: 1px solid #1e3a56;
+        border-radius: 16px;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+        z-index: 1400;
+        overflow: hidden;
+    }
+    .notif-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 16px 10px 16px;
+        border-bottom: 1px solid #1e3a56;
+    }
+    .notif-list {
+        max-height: 420px;
+        overflow-y: auto;
+        padding: 6px 0;
+    }
+    .notif-item {
+        position: relative;
+        padding: 12px 16px;
+        cursor: pointer;
+        border-bottom: 1px solid rgba(30,58,86,0.5);
+        transition: background 0.15s ease;
+    }
+    .notif-item:last-child { border-bottom: none; }
+    .notif-item:hover { background: rgba(245,166,35,0.06); }
+    .notif-unread { background: rgba(245,166,35,0.04); }
+    .notif-read { opacity: 0.75; }
+    .notif-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 32px 16px;
+        text-align: center;
+    }
+    /* Notification detail modal */
+    .notif-detail-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: min(480px, 92vw);
+        background: #132236;
+        border: 1px solid #1e3a56;
+        border-radius: 20px;
+        padding: 28px 28px 24px 28px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+    }
 </style>
 
 @code {
     private bool _drawerOpen = true;
     private string? _profileImageUrl;
     private string? _userName;
+    private UserDto? _currentUser;
+
+    // Notifications
+    private bool _notificationsOpen = false;
+    private int _unreadCount = 0;
+    private List<AiNotification> _notifications = new();
+
+    // Detail modal
+    private bool _detailOpen = false;
+    private AiNotification? _selectedNotification;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadUserAsync();
+        await RefreshNotificationsAsync();
         AuthStateProvider.AuthenticationStateChanged += OnAuthStateChanged;
+        NotificationService.OnChange += OnNotificationsChanged;
+
+        // Auto-notification: check if user needs a haircut reminder
+        if (_currentUser?.Role == "Customer")
+            _ = Task.Run(async () => await CheckHaircutReminderAsync());
     }
 
     private async void OnAuthStateChanged(Task<AuthenticationState> task)
     {
         await LoadUserAsync();
+        if (_currentUser?.Role == "Customer")
+            _ = Task.Run(async () => await CheckHaircutReminderAsync());
         StateHasChanged();
+    }
+
+    private async void OnNotificationsChanged()
+    {
+        await RefreshNotificationsAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RefreshNotificationsAsync()
+    {
+        _notifications = await NotificationService.GetAllAsync();
+        _unreadCount = _notifications.Count(n => !n.IsRead);
+    }
+
+    private async Task ToggleNotifications()
+    {
+        _notificationsOpen = !_notificationsOpen;
+        if (_notificationsOpen)
+            await RefreshNotificationsAsync();
+    }
+
+    private async Task MarkAllRead()
+    {
+        await NotificationService.MarkAllReadAsync();
+        _unreadCount = 0;
+        foreach (var n in _notifications) n.IsRead = true;
+        StateHasChanged();
+    }
+
+    private async Task ClearAll()
+    {
+        await NotificationService.ClearAllAsync();
+        _notifications = new();
+        _unreadCount = 0;
+        StateHasChanged();
+    }
+
+    private async Task OpenNotificationDetail(AiNotification notif)
+    {
+        _selectedNotification = notif;
+        _detailOpen = true;
+        _notificationsOpen = false;
+
+        // Mark as read
+        if (!notif.IsRead)
+        {
+            notif.IsRead = true;
+            var all = await NotificationService.GetAllAsync();
+            var target = all.FirstOrDefault(n => n.Id == notif.Id);
+            if (target != null) target.IsRead = true;
+            await NotificationService.SaveAsync(all);
+            _unreadCount = all.Count(n => !n.IsRead);
+        }
+        StateHasChanged();
+    }
+
+    private void CloseDetail()
+    {
+        _detailOpen = false;
+        _selectedNotification = null;
+        StateHasChanged();
+    }
+
+    private void GoToBarberFromDetail()
+    {
+        if (_selectedNotification == null) return;
+        var barberId = _selectedNotification.BarberId;
+        var date = _selectedNotification.SlotDate;
+        var time = _selectedNotification.SlotTime;
+        CloseDetail();
+        // Navigate to barber calendar with pre-selected date
+        Navigation.NavigateTo($"/barber/{barberId}?preDate={date}&preTime={time}");
     }
 
     private async Task LoadUserAsync()
     {
-        var user = await AuthService.GetCurrentUserAsync();
-        _profileImageUrl = FixProfileImageUrl(user?.ProfilePictureUrl);
-        _userName = user?.Name;
+        _currentUser = await AuthService.GetCurrentUserAsync();
+        _profileImageUrl = FixProfileImageUrl(_currentUser?.ProfilePictureUrl);
+        _userName = _currentUser?.Name;
+    }
+
+    // ── Auto-notification: remind user to book after 24-31 days ────────────
+    private async Task CheckHaircutReminderAsync()
+    {
+        try
+        {
+            if (_currentUser == null) return;
+
+            // Check if we already sent a reminder today
+            var reminded = await NotificationService.GetLastReminderDateAsync();
+            if (reminded.HasValue && (DateTime.Today - reminded.Value).TotalHours < 20)
+                return;
+
+            var appointments = await AppointmentService.GetMyAppointmentsAsync();
+            var lastCompleted = appointments
+                .Where(a => a.Status is "Completed" or "Confirmed" or "Scheduled")
+                .OrderByDescending(a => a.AppointmentDate)
+                .FirstOrDefault();
+
+            if (lastCompleted == null) return;
+
+            if (!DateTime.TryParse(lastCompleted.AppointmentDate, out var lastDate)) return;
+            var daysSince = (DateTime.Today - lastDate).TotalDays;
+
+            // Send reminder if 24-31 days have passed since last haircut
+            if (daysSince >= 24)
+            {
+                await NotificationService.SetLastReminderDateAsync(DateTime.Today);
+
+                var reminder = new AiNotification
+                {
+                    BarberName = "Reminder automat",
+                    BarberId = lastCompleted.BarberId.ToString(),
+                    SlotDate = DateTime.Today.AddDays(1).ToString("yyyy-MM-dd"),
+                    SlotTime = "10:00:00",
+                    Score = 0,
+                    Reason = $"Au trecut {(int)daysSince} zile de la ultima tunsoare ({lastDate:dd MMM yyyy}). " +
+                              $"Este recomandat sa te tunzi la fiecare 24-31 de zile. " +
+                              $"Apasa 'Mergi la programare' pentru a rezerva un slot la {lastCompleted.BarberName}.",
+                    CreatedAt = DateTime.Now,
+                    IsRead = false
+                };
+                await NotificationService.AddAsync(reminder);
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch { /* Silent — don't block UI */ }
     }
 
     public void Dispose()
     {
         if (AuthStateProvider != null)
             AuthStateProvider.AuthenticationStateChanged -= OnAuthStateChanged;
+        NotificationService.OnChange -= OnNotificationsChanged;
     }
 
     private string? FixProfileImageUrl(string? url)

@@ -15,6 +15,10 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5000";
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
 
+// Named HttpClient for the Python AI service
+var aiServiceBaseUrl = builder.Configuration["AiServiceBaseUrl"] ?? "http://localhost:8000";
+builder.Services.AddHttpClient("AiService", client => client.BaseAddress = new Uri(aiServiceBaseUrl));
+
 // Add MudBlazor services
 builder.Services.AddMudServices();
 
@@ -30,6 +34,7 @@ builder.Services.AddScoped<IBarberServiceService, BarberServiceService>();
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<ReviewService>();
+builder.Services.AddScoped<NotificationService>();
 
 // Add authorization
 builder.Services.AddAuthorizationCore();
