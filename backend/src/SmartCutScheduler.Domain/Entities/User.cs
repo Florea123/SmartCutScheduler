@@ -12,6 +12,8 @@ public class User
     
     public string? PhoneNumber { get; set; }
     public string? ProfilePictureUrl { get; set; }
+    /// <summary>URL of the reference photo taken right after a fresh haircut, used by the AI hair-check feature.</summary>
+    public string? FreshHaircutPhotoUrl { get; set; }
     
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;

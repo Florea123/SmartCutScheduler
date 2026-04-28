@@ -32,7 +32,7 @@ class TestBarberRatingScore:
         assert _barber_rating_score(3.0) == pytest.approx(12.5)
 
     def test_missing_rating_returns_neutral(self):
-        assert _barber_rating_score(None) == 15.0
+        assert _barber_rating_score(None) == pytest.approx(15.0)
 
     def test_above_max_is_clamped(self):
         assert _barber_rating_score(6.0) == pytest.approx(25.0)
@@ -52,7 +52,7 @@ class TestBarberRatingScore:
 
 class TestPreferredTimeScore:
     def test_no_history_returns_neutral(self):
-        assert _preferred_time_score("09:00:00", []) == 15.0
+        assert _preferred_time_score("09:00:00", []) == pytest.approx(15.0)
 
     def test_exact_match_returns_max(self):
         history = [{"startTime": "09:00:00"}, {"startTime": "09:30:00"}]
@@ -72,9 +72,9 @@ class TestPreferredTimeScore:
     def test_returns_neutral_for_unparseable_time(self):
         history = [{"startTime": "bad"}]
         score = _preferred_time_score("10:00:00", history)
-        assert score == 15.0
+        assert score == pytest.approx(15.0)
 
-    def test_uses_startTime_case_insensitive(self):
+    def test_uses_starttime_case_insensitive(self):
         history = [{"StartTime": "10:00:00"}]
         score = _preferred_time_score("10:00:00", history)
         assert score == pytest.approx(30.0)
@@ -92,26 +92,26 @@ class TestPreferredTimeScore:
 
 class TestHaircutUrgencyScore:
     def test_no_date_returns_neutral(self):
-        assert _haircut_urgency_score(None) == 5.0
+        assert _haircut_urgency_score(None) == pytest.approx(5.0)
 
     def test_recent_7_days_returns_zero(self):
         recent = (date.today() - timedelta(days=7)).strftime("%Y-%m-%d")
-        assert _haircut_urgency_score(recent) == 0.0
+        assert _haircut_urgency_score(recent) == pytest.approx(0.0)
 
     def test_14_days_returns_three(self):
         d = (date.today() - timedelta(days=14)).strftime("%Y-%m-%d")
-        assert _haircut_urgency_score(d) == 3.0
+        assert _haircut_urgency_score(d) == pytest.approx(3.0)
 
     def test_21_days_returns_six(self):
         d = (date.today() - timedelta(days=21)).strftime("%Y-%m-%d")
-        assert _haircut_urgency_score(d) == 6.0
+        assert _haircut_urgency_score(d) == pytest.approx(6.0)
 
     def test_overdue_60_days_returns_max(self):
         overdue = (date.today() - timedelta(days=60)).strftime("%Y-%m-%d")
-        assert _haircut_urgency_score(overdue) == 10.0
+        assert _haircut_urgency_score(overdue) == pytest.approx(10.0)
 
     def test_invalid_date_returns_neutral(self):
-        assert _haircut_urgency_score("not-a-date") == 5.0
+        assert _haircut_urgency_score("not-a-date") == pytest.approx(5.0)
 
     def test_score_within_range(self):
         for days in [0, 7, 14, 21, 30, 45, 60]:
@@ -162,7 +162,7 @@ class TestScoreSlot:
         )
         with patch("services.scoring.check_slot_availability", return_value=(False, "conflict")):
             result = await score_slot(slot, "u1", [], 18.0, None, include_calendar=True)
-        assert result.score_breakdown.calendar_availability == 0.0
+        assert result.score_breakdown.calendar_availability == pytest.approx(0.0)
 
     async def test_calendar_free_sets_calendar_score_to_15(self):
         slot = SlotInfo(
@@ -171,7 +171,7 @@ class TestScoreSlot:
         )
         with patch("services.scoring.check_slot_availability", return_value=(True, "available")):
             result = await score_slot(slot, "u1", [], 18.0, None, include_calendar=True)
-        assert result.score_breakdown.calendar_availability == 15.0
+        assert result.score_breakdown.calendar_availability == pytest.approx(15.0)
 
     async def test_include_calendar_false_assumes_free(self):
         slot = SlotInfo(
@@ -179,7 +179,7 @@ class TestScoreSlot:
             serviceId="s1", date="2026-04-10", startTime="09:00:00", endTime="09:30:00",
         )
         result = await score_slot(slot, "u1", [], 14.0, None, include_calendar=False)
-        assert result.score_breakdown.calendar_availability == 15.0
+        assert result.score_breakdown.calendar_availability == pytest.approx(15.0)
 
 
 # ---------------------------------------------------------------------------

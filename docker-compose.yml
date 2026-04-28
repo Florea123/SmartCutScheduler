@@ -69,6 +69,7 @@ services:
       - "5000:5000"
     volumes:
       - ./backend/src/SmartCutScheduler.Api/wwwroot/profile-images:/app/wwwroot/profile-images
+      - ./backend/src/SmartCutScheduler.Api/wwwroot/fresh-haircut-photos:/app/wwwroot/fresh-haircut-photos
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 15s

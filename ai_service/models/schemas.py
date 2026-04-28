@@ -57,3 +57,27 @@ class CalendarConnectResponse(BaseModel):
 
 class CalendarStatusResponse(BaseModel):
     connected: bool
+
+
+# ---------------------------------------------------------------------------
+# Haircut AI schemas
+# ---------------------------------------------------------------------------
+
+class HaircutAnalysisResponse(BaseModel):
+    # Validation error fields (set when photo validation fails)
+    error: bool = False
+    error_type: Optional[str] = None   # no_person_reference | no_person_current | different_person
+    error_message: Optional[str] = None
+
+    # Analysis fields (set when validation passes)
+    needs_haircut: bool = False
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    hair_growth_level: str = "unknown"  # none | minimal | moderate | significant | excessive | unknown
+    reason: str = ""
+    estimated_weeks_since_haircut: Optional[int] = None
+    recommendation_message: Optional[str] = None  # populated when needs_haircut=True
+
+
+class FreshPhotoSavedResponse(BaseModel):
+    message: str
+    photo_url: str

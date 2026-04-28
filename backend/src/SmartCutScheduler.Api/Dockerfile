@@ -10,8 +10,11 @@ COPY ["SmartCutScheduler.Infrastructure/SmartCutScheduler.Infrastructure.csproj"
 # Restore dependencies
 RUN dotnet restore "SmartCutScheduler.Api/SmartCutScheduler.Api.csproj"
 
-# Copy all source code
-COPY . .
+# Copy all source code (explicit directories to avoid exposing sensitive files)
+COPY SmartCutScheduler.Api/ SmartCutScheduler.Api/
+COPY SmartCutScheduler.Application/ SmartCutScheduler.Application/
+COPY SmartCutScheduler.Domain/ SmartCutScheduler.Domain/
+COPY SmartCutScheduler.Infrastructure/ SmartCutScheduler.Infrastructure/
 
 # Build and publish
 WORKDIR "/src/SmartCutScheduler.Api"

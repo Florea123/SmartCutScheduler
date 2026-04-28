@@ -1,4 +1,4 @@
-import pytest
+﻿import pytest
 from httpx import ASGITransport, AsyncClient
 
 from main import app
@@ -84,6 +84,6 @@ def make_scored_slot(barber_name: str, hour: int, total: float) -> ScoredSlot:
 @pytest.fixture
 async def async_client():
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
+        transport=ASGITransport(app=app), base_url="https://test"
     ) as client:
         yield client

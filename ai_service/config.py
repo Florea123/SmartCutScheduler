@@ -1,4 +1,4 @@
-import os
+﻿import os
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -14,12 +14,14 @@ class Settings(BaseSettings):
     )
 
     # .NET Backend API
-    dotnet_api_url: str = "http://api:5000"
+    dotnet_api_url: str = "https://api:5000"
     dotnet_api_timeout: int = 10
 
     # Google Gemini
     gemini_api_key: str = ""
     gemini_model: str = "gemini-flash-lite-latest"
+    # Vision model for multimodal image analysis (hair-check feature)
+    gemini_vision_model: str = "gemini-flash-lite-latest"
 
     # OpenWeatherMap
     weather_api_key: str = ""

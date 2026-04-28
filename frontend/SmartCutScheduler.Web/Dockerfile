@@ -5,7 +5,16 @@ WORKDIR /src
 
 COPY SmartCutScheduler.Web.csproj .
 RUN dotnet restore "SmartCutScheduler.Web.csproj"
-COPY . .
+# Copy only source files explicitly to avoid exposing sensitive files
+COPY _Imports.razor App.razor Program.cs ./
+COPY Layout/ Layout/
+COPY Models/ Models/
+COPY Pages/ Pages/
+COPY Services/ Services/
+COPY Shared/ Shared/
+COPY State/ State/
+COPY wwwroot/ wwwroot/
+COPY Properties/ Properties/
 RUN dotnet publish -c Release -o /app/publish
 
 # Runtime stage (static files)
