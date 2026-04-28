@@ -11,7 +11,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/recommend", tags=["recommend"])
 
 
-@router.post("", response_model=RecommendResponse, summary="Get AI-powered appointment recommendation")
+@router.post(
+    "",
+    summary="Get AI-powered appointment recommendation",
+    responses={
+        400: {"description": "No available slots provided"},
+        422: {"description": "Could not score any of the provided slots"},
+    },
+)
 async def recommend(request: RecommendRequest) -> RecommendResponse:
     """
     Score all provided slots using the deterministic engine, then ask

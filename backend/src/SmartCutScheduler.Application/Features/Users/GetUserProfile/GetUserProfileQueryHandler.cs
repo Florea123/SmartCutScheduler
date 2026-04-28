@@ -22,6 +22,7 @@ public class GetUserProfileQueryHandler : IRequestHandler<GetUserProfileQuery, U
             user.Email,
             user.PhoneNumber,
             user.ProfilePictureUrl,
+            user.FreshHaircutPhotoUrl,
             user.Role.ToString(),
             user.CreatedAtUtc
         );

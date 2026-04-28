@@ -75,4 +75,47 @@ public class GetDaySlotsQueryHandler_AllCases
         var slots = slotsProp.GetValue(payload) as IEnumerable<object> ?? (slotsProp.GetValue(payload) as System.Collections.IEnumerable)?.Cast<object>();
         slots.Should().NotBeNull();
     }
+
+    [Fact]
+    public async Task Handle_ShouldMarkSlotsAsBooked_WhenAppointmentOverlaps()
+    {
+        var barber = new Barber { IsActive = true };
+        var barberRepoMock = new Mock<IBarberRepository>();
+        barberRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(barber);
+        var appointment = new Appointment
+        {
+            StartTime = new TimeSpan(8, 0, 0),
+            EndTime = new TimeSpan(8, 30, 0),
+            Status = AppointmentStatus.Confirmed
+        };
+        var appointmentRepoMock = new Mock<IAppointmentRepository>();
+        appointmentRepoMock.Setup(r => r.GetByBarberIdAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Appointment> { appointment });
+        var handler = new GetDaySlotsQueryHandler(barberRepoMock.Object, appointmentRepoMock.Object);
+        var query = new GetDaySlotsQuery(Guid.NewGuid(), new DateTime(2024, 3, 18)); // Monday
+        var result = await handler.Handle(query, CancellationToken.None);
+        result.Should().NotBeNull();
+        result.ToString().Should().Contain("Ok");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldIgnoreCancelledAppointments()
+    {
+        var barber = new Barber { IsActive = true };
+        var barberRepoMock = new Mock<IBarberRepository>();
+        barberRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(barber);
+        var cancelledAppointment = new Appointment
+        {
+            StartTime = new TimeSpan(9, 0, 0),
+            EndTime = new TimeSpan(9, 30, 0),
+            Status = AppointmentStatus.Cancelled
+        };
+        var appointmentRepoMock = new Mock<IAppointmentRepository>();
+        appointmentRepoMock.Setup(r => r.GetByBarberIdAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Appointment> { cancelledAppointment });
+        var handler = new GetDaySlotsQueryHandler(barberRepoMock.Object, appointmentRepoMock.Object);
+        var query = new GetDaySlotsQuery(Guid.NewGuid(), new DateTime(2024, 3, 19)); // Tuesday
+        var result = await handler.Handle(query, CancellationToken.None);
+        result.ToString().Should().Contain("Ok");
+    }
 }

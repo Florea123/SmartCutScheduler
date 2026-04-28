@@ -6,6 +6,7 @@ public record UserDto(
     string Email,
     string? PhoneNumber,
     string? ProfilePictureUrl,
+    string? FreshHaircutPhotoUrl,
     string Role,
     DateTime CreatedAtUtc
 );

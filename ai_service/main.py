@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
-from routers import calendar, recommend
+from routers import calendar, recommend, haircut
 
 logging.basicConfig(
     level=logging.DEBUG if settings.debug else logging.INFO,
@@ -33,6 +33,7 @@ app.add_middleware(
 
 app.include_router(recommend.router)
 app.include_router(calendar.router)
+app.include_router(haircut.router)
 
 
 @app.get("/health", tags=["health"], summary="Health check")

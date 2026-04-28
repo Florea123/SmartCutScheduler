@@ -64,3 +64,26 @@ public class AiRecommendResponse
     public string reason { get; set; } = string.Empty;
     public AiScoreBreakdown score_breakdown { get; set; } = new();
 }
+
+// ── Haircut AI models ─────────────────────────────────────────────────────────
+
+public class HaircutAnalysisResult
+{
+    // Validation error fields
+    public bool error { get; set; }
+    public string? error_type { get; set; }  // no_person_reference | no_person_current | different_person
+    public string? error_message { get; set; }
+
+    // Analysis fields
+    public bool needs_haircut { get; set; }
+    public double confidence { get; set; }
+    public string hair_growth_level { get; set; } = string.Empty;
+    public string reason { get; set; } = string.Empty;
+    public int? estimated_weeks_since_haircut { get; set; }
+    public string? recommendation_message { get; set; }
+}
+
+public class FreshPhotoUrlResponse
+{
+    public string? photoUrl { get; set; }
+}

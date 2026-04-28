@@ -64,3 +64,12 @@ coverage*.json
 node_modules/
 dist/
 .vscode/
+
+## User-uploaded files (runtime data, not source)
+**/wwwroot/fresh-haircut-photos/
+
+## Generated/copied JS at runtime
+**/wwwroot/js/
+
+## Temp test output
+test_output.txt

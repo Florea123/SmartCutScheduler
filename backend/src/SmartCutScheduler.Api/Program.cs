@@ -123,8 +123,30 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var hasher = scope.ServiceProvider.GetRequiredService<PasswordHasher<User>>();
     
-    // Create database schema
-    await db.Database.EnsureCreatedAsync();
+    // Apply schema: try MigrateAsync first (works if DB was created via migrations),
+    // then fall back to EnsureCreatedAsync + manual column patching for DBs
+    // created with EnsureCreatedAsync (no __EFMigrationsHistory table).
+    var canMigrate = await db.Database.CanConnectAsync();
+    if (canMigrate)
+    {
+        try
+        {
+            await db.Database.MigrateAsync();
+        }
+        catch
+        {
+            // DB exists but was not created through migrations — patch manually
+            await db.Database.EnsureCreatedAsync();
+            await db.Database.ExecuteSqlRawAsync(@"
+                ALTER TABLE ""Users""
+                ADD COLUMN IF NOT EXISTS ""FreshHaircutPhotoUrl"" text;
+            ");
+        }
+    }
+    else
+    {
+        await db.Database.MigrateAsync();
+    }
     
     var adminName = builder.Configuration["SeedAdmin:Name"] ?? "Admin";
     var adminEmail = builder.Configuration["SeedAdmin:Email"] ?? "admin@smartcut.com";
@@ -181,6 +203,6 @@ app.MapProfileEndpoints();
 app.MapReviewEndpoints();
 app.MapHealthChecks("/health");
 
-app.Run();
+await app.RunAsync();
 
 public partial class Program { } // For testing

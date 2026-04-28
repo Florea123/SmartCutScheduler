@@ -1,0 +1,864 @@
+@page "/haircut-ai"
+@using MudBlazor
+@using SmartCutScheduler.Web.Models
+@using System.Net.Http.Headers
+@using System.Text.Json
+@inject IHttpClientFactory HttpClientFactory
+@inject IApiService ApiService
+@inject IBarberService BarberService
+@inject IAuthService AuthService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject IConfiguration Configuration
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+
+<PageTitle>Verificare AI tunsoare – SmartCut Scheduler</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-10">
+
+    @* ── Page Header ── *@
+    <MudStack Spacing="1" Class="mb-8" AlignItems="AlignItems.Center">
+        <MudIcon Icon="@Icons.Material.Filled.AutoAwesome"
+                 Style="font-size:3rem; color:#F5A623;" Class="mb-2" />
+        <MudText Typo="Typo.h4" Align="Align.Center"
+                 Style="font-weight:800; color:#f0f4f8;">
+            AI Hair Check
+        </MudText>
+        <MudText Typo="Typo.body2" Align="Align.Center" Style="color:#8fa3ba; max-width:380px;">
+            Lasa AI-ul sa compare cum arati acum fata de poza ta dupa ultima tunsoare
+            si sa iti spuna daca e timpul sa te programezi.
+        </MudText>
+    </MudStack>
+
+    @* ════════════════════════════════════════════════════════════════════════
+       STEP 1 — Reference photo (fresh haircut)
+    ════════════════════════════════════════════════════════════════════════ *@
+    <MudPaper Elevation="0" Class="pa-6 mb-5"
+              Style="background:#132236; border:1px solid #1e3a56; border-radius:20px;">
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4">
+            <MudAvatar Style="background:#F5A623; color:#000; font-weight:700;">1</MudAvatar>
+            <div>
+                <MudText Style="font-weight:700; color:#f0f4f8; font-size:1.05rem;">
+                    Poza ta dupa o tunsoare proaspata
+                </MudText>
+                <MudText Typo="Typo.caption" Style="color:#8fa3ba;">
+                    Aceasta va fi salvata si folosita ca referinta de catre AI.
+                </MudText>
+            </div>
+        </MudStack>
+
+        @* Show existing reference photo *@
+        @if (!string.IsNullOrEmpty(_referencePhotoDataUrl))
+        {
+            <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="mb-4">
+                <MudImage Src="@_referencePhotoDataUrl"
+                          Alt="Poza referinta"
+                          Style="width:160px; height:160px; object-fit:cover; border-radius:12px; border:2px solid #F5A623;" />
+                <MudChip T="string" Color="Color.Success" Size="Size.Small"
+                         Icon="@Icons.Material.Filled.CheckCircle">
+                    Poza salvata
+                </MudChip>
+            </MudStack>
+        }
+
+        @* Preview of newly selected reference photo *@
+        @if (!string.IsNullOrEmpty(_refPreviewDataUrl))
+        {
+            <MudStack AlignItems="AlignItems.Center" Spacing="1" Class="mb-4">
+                <MudText Typo="Typo.caption" Style="color:#8fa3ba;">Previzualizare noua poza:</MudText>
+                <MudImage Src="@_refPreviewDataUrl"
+                          Alt="Previzualizare"
+                          Style="width:160px; height:160px; object-fit:cover; border-radius:12px; border:2px dashed #F5A623;" />
+            </MudStack>
+        }
+
+        @* Warning when file was lost (e.g. after container rebuild) *@
+        @if (_referenceFileMissing)
+        {
+            <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3" Style="border-radius:10px;">
+                Poza anterioară nu mai este disponibilă (containerul a fost recreat). Te rugăm să încarci din nou o poză.
+            </MudAlert>
+        }
+
+        @* Camera view for reference *@
+        @if (_refCameraActive)
+        {
+            <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="mb-4">
+                <video id="ref-video"
+                       style="width:100%; max-width:320px; border-radius:12px; border:2px solid #1e3a56;"
+                       autoplay playsinline muted></video>
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Filled"
+                               Style="background:#F5A623; color:#000; font-weight:700; border-radius:50px;"
+                               StartIcon="@Icons.Material.Filled.PhotoCamera"
+                               OnClick="CaptureReferenceFromCamera">
+                        Fă poza
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined"
+                               Style="border-color:#2a4a6a; color:#8fa3ba; border-radius:50px;"
+                               OnClick="StopRefCamera">
+                        Anulează
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+        }
+
+        @* Input options for reference photo *@
+        @if (!_refCameraActive)
+        {
+            <MudStack Row="true" Spacing="2" Justify="Justify.Center" Class="mb-3">
+                <InputFile id="ref-file-input" OnChange="OnRefFileSelected"
+                           style="display:none;" accept=".jpg,.jpeg,.png,.webp" />
+                <MudButton Variant="Variant.Outlined"
+                           Style="border-color:#2a4a6a; color:#8fa3ba; border-radius:50px;"
+                           StartIcon="@Icons.Material.Filled.UploadFile">
+                    <label for="ref-file-input" style="cursor:pointer; margin:0;">
+                        Atașează fișier
+                    </label>
+                </MudButton>
+                @if (_cameraSupported)
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               Style="border-color:#2a4a6a; color:#8fa3ba; border-radius:50px;"
+                               StartIcon="@Icons.Material.Filled.Videocam"
+                               OnClick="StartRefCamera">
+                        Folosește camera
+                    </MudButton>
+                }
+            </MudStack>
+        }
+
+        @* Save reference photo button *@
+        @if (_refPhotoFile != null || !string.IsNullOrEmpty(_refCapturedDataUrl))
+        {
+            <MudStack AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Filled"
+                           Style="background:#F5A623; color:#000; font-weight:700; border-radius:50px; min-width:200px;"
+                           StartIcon="@Icons.Material.Filled.Save"
+                           Disabled="@_savingRef"
+                           OnClick="SaveReferencePhoto">
+                    @if (_savingRef)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true"
+                                            Style="color:#000;" Class="mr-2" />
+                        <span>Se salvează...</span>
+                    }
+                    else
+                    {
+                        <span>Salvează poza de referință</span>
+                    }
+                </MudButton>
+            </MudStack>
+        }
+    </MudPaper>
+
+    @* ════════════════════════════════════════════════════════════════════════
+       STEP 2 — Current photo (for analysis)
+    ════════════════════════════════════════════════════════════════════════ *@
+    <MudPaper Elevation="0" Class="pa-6 mb-5"
+              Style="@($"background:#132236; border:1px solid {(_referencePhotoUrl == null && !_referenceFileMissing ? "#2a3a4a" : "#1e3a56")}; border-radius:20px; opacity:{(_referencePhotoUrl == null && !_referenceFileMissing ? "0.5" : "1")};")">
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4">
+            <MudAvatar Style="@($"background:{(_referencePhotoUrl != null ? "#F5A623" : "#2a3a4a")}; color:{(_referencePhotoUrl != null ? "#000" : "#8fa3ba")}; font-weight:700;")">
+                2
+            </MudAvatar>
+            <div>
+                <MudText Style="font-weight:700; color:#f0f4f8; font-size:1.05rem;">
+                    Poza ta actuală
+                </MudText>
+                <MudText Typo="Typo.caption" Style="color:#8fa3ba;">
+                    @(_referencePhotoUrl == null
+                        ? "Salvează mai întâi poza de referință."
+                        : "Aceasta nu se salvează — e folosită doar pentru analiză.")
+                </MudText>
+            </div>
+        </MudStack>
+
+        @if (_referencePhotoUrl != null)
+        {
+            @* Preview current photo *@
+            @if (!string.IsNullOrEmpty(_curPreviewDataUrl))
+            {
+                <MudStack AlignItems="AlignItems.Center" Spacing="1" Class="mb-4">
+                    <MudImage Src="@_curPreviewDataUrl"
+                              Alt="Poza actuala"
+                              Style="width:160px; height:160px; object-fit:cover; border-radius:12px; border:2px dashed #4a8fba;" />
+                </MudStack>
+            }
+
+            @* Camera view for current photo *@
+            @if (_curCameraActive)
+            {
+                <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="mb-4">
+                    <video id="cur-video"
+                           style="width:100%; max-width:320px; border-radius:12px; border:2px solid #1e3a56;"
+                           autoplay playsinline muted></video>
+                    <MudStack Row="true" Spacing="2">
+                        <MudButton Variant="Variant.Filled"
+                                   Style="background:#F5A623; color:#000; font-weight:700; border-radius:50px;"
+                                   StartIcon="@Icons.Material.Filled.PhotoCamera"
+                                   OnClick="CaptureCurrentFromCamera">
+                            Fă poza
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined"
+                                   Style="border-color:#2a4a6a; color:#8fa3ba; border-radius:50px;"
+                                   OnClick="StopCurCamera">
+                            Anulează
+                        </MudButton>
+                    </MudStack>
+                </MudStack>
+            }
+
+            @if (!_curCameraActive)
+            {
+                <MudStack Row="true" Spacing="2" Justify="Justify.Center" Class="mb-3">
+                    <InputFile id="cur-file-input" OnChange="OnCurFileSelected"
+                               style="display:none;" accept=".jpg,.jpeg,.png,.webp" />
+                    <MudButton Variant="Variant.Outlined"
+                               Style="border-color:#2a4a6a; color:#8fa3ba; border-radius:50px;"
+                               StartIcon="@Icons.Material.Filled.UploadFile">
+                        <label for="cur-file-input" style="cursor:pointer; margin:0;">
+                            Atașează fișier
+                        </label>
+                    </MudButton>
+                    @if (_cameraSupported)
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   Style="border-color:#2a4a6a; color:#8fa3ba; border-radius:50px;"
+                                   StartIcon="@Icons.Material.Filled.Videocam"
+                                   OnClick="StartCurCamera">
+                            Folosește camera
+                        </MudButton>
+                    }
+                </MudStack>
+            }
+
+            @* Analyze button *@
+            @if (_curPhotoFile != null || !string.IsNullOrEmpty(_curCapturedDataUrl))
+            {
+                <MudStack AlignItems="AlignItems.Center">
+                    <MudButton Variant="Variant.Filled"
+                               Style="background:linear-gradient(135deg,#F5A623,#FF8C00); color:#000; font-weight:700; border-radius:50px; min-width:220px;"
+                               StartIcon="@Icons.Material.Filled.AutoAwesome"
+                               Disabled="@_analyzing"
+                               OnClick="RunAnalysis">
+                        @if (_analyzing)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true"
+                                                Style="color:#000;" Class="mr-2" />
+                            <span>Se analizează...</span>
+                        }
+                        else
+                        {
+                            <span>Analizează tunsoarea</span>
+                        }
+                    </MudButton>
+                </MudStack>
+            }
+        }
+    </MudPaper>
+
+    @* ════════════════════════════════════════════════════════════════════════
+       STEP 3 — Analysis result
+    ════════════════════════════════════════════════════════════════════════ *@
+    @if (_result != null)
+    {
+        @* ── Validation error (wrong photo content) ── *@
+        @if (_result.error)
+        {
+            <MudPaper Elevation="0" Class="pa-6"
+                      Style="background:linear-gradient(135deg,#1a1000,#2a1a00); border:1px solid rgba(255,152,0,0.5); border-radius:20px;">
+                <MudStack AlignItems="AlignItems.Center" Spacing="3">
+                    <MudIcon Icon="@(_result.error_type == "different_person"
+                                        ? Icons.Material.Filled.PeopleAlt
+                                        : Icons.Material.Filled.PersonOff)"
+                             Style="font-size:3.5rem; color:#FFA726;" />
+                    <MudText Typo="Typo.h5" Align="Align.Center"
+                             Style="font-weight:800; color:#FFB74D;">
+                        @(_result.error_type switch {
+                            "no_person_reference" => "Poza de referință nu e validă",
+                            "no_person_current"   => "Poza actuală nu e validă",
+                            "different_person"    => "Persoane diferite detectate",
+                            _                     => "Poza nu poate fi analizată"
+                        })
+                    </MudText>
+                    <MudPaper Elevation="0" Class="pa-4"
+                              Style="background:rgba(255,255,255,0.05); border-radius:12px; width:100%;">
+                        <MudText Align="Align.Center" Style="color:#FFE0B2;">
+                            @_result.error_message
+                        </MudText>
+                    </MudPaper>
+                    <MudButton Variant="Variant.Outlined"
+                               Style="border-color:#FFA726; color:#FFA726; border-radius:50px;"
+                               StartIcon="@Icons.Material.Filled.Refresh"
+                               OnClick="@(() => { _result = null; _recommendation = null; StateHasChanged(); })">
+                        Încearcă din nou
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        }
+        else
+        {
+        @* ── Normal analysis result ── *@
+        <MudPaper Elevation="0" Class="pa-6"
+                  Style="@($"background:linear-gradient(135deg,{(_result.needs_haircut ? "#1a0d0d" : "#0d1a0d")},{(_result.needs_haircut ? "#2a1010" : "#0d2a10")}); border:1px solid {(_result.needs_haircut ? "rgba(244,67,54,0.4)" : "rgba(76,175,80,0.4)")}; border-radius:20px;")">
+
+            <MudStack AlignItems="AlignItems.Center" Spacing="3">
+
+                @* Icon + verdict *@
+                @if (_result.needs_haircut)
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.ContentCut"
+                             Style="font-size:3.5rem; color:#ef5350;" />
+                    <MudText Typo="Typo.h5" Align="Align.Center"
+                             Style="font-weight:800; color:#ef9a9a;">
+                        E timpul să te tunzi! ✂️
+                    </MudText>
+                }
+                else
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                             Style="font-size:3.5rem; color:#66bb6a;" />
+                    <MudText Typo="Typo.h5" Align="Align.Center"
+                             Style="font-weight:800; color:#a5d6a7;">
+                        Arăți grozav! Nu e nevoie încă. 👍
+                    </MudText>
+                }
+
+                @* AI reason *@
+                <MudPaper Elevation="0" Class="pa-4" Style="background:rgba(255,255,255,0.05); border-radius:12px; width:100%;">
+                    <MudText Align="Align.Center" Style="color:#cfd8dc; font-style:italic;">
+                        "@_result.reason"
+                    </MudText>
+                </MudPaper>
+
+                @* Details chips *@
+                <MudStack Row="true" Spacing="2" Justify="Justify.Center" Wrap="Wrap.Wrap">
+                    <MudChip T="string" Size="Size.Small"
+                             Style="background:rgba(255,255,255,0.08); color:#cfd8dc;">
+                        Creștere: @GrowthLabel(_result.hair_growth_level)
+                    </MudChip>
+                    <MudChip T="string" Size="Size.Small"
+                             Style="background:rgba(255,255,255,0.08); color:#cfd8dc;">
+                        Încredere: @($"{_result.confidence * 100:F0}%")
+                    </MudChip>
+                    @if (_result.estimated_weeks_since_haircut.HasValue)
+                    {
+                        <MudChip T="string" Size="Size.Small"
+                                 Style="background:rgba(255,255,255,0.08); color:#cfd8dc;">
+                            ~@_result.estimated_weeks_since_haircut săptămâni de la ultima tunsoare
+                        </MudChip>
+                    }
+                </MudStack>
+
+                @* Recommendation message *@
+                @if (_result.needs_haircut && !string.IsNullOrEmpty(_result.recommendation_message))
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled"
+                              Style="border-radius:12px; width:100%;">
+                        @_result.recommendation_message
+                    </MudAlert>
+                }
+
+                @* ── AI Scheduling Recommendation ── *@
+                @if (_result.needs_haircut)
+                {
+                    <MudDivider Style="border-color:rgba(255,255,255,0.1); width:100%;" />
+
+                    @if (_loadingRecommendation)
+                    {
+                        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                            <MudProgressCircular Indeterminate="true" Style="color:#F5A623;" />
+                            <MudText Typo="Typo.caption" Style="color:#8fa3ba;">
+                                AI-ul găsește cel mai bun moment pentru programare...
+                            </MudText>
+                        </MudStack>
+                    }
+                    else if (_recommendation != null)
+                    {
+                        <MudPaper Elevation="0" Style="background:rgba(245,166,35,0.08); border:1px solid rgba(245,166,35,0.3); border-radius:16px; padding:20px; width:100%;">
+                            <MudStack Spacing="3">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Filled.SmartToy" Style="color:#F5A623; font-size:1.6rem;" />
+                                    <MudText Style="font-weight:700; color:#f0f4f8; font-size:1rem;">
+                                        Recomandare AI de programare
+                                    </MudText>
+                                </MudStack>
+
+                                @* Slot details *@
+                                <MudStack Row="true" Spacing="3" Wrap="Wrap.Wrap" Justify="Justify.Center">
+                                    <MudChip T="string" Icon="@Icons.Material.Filled.ContentCut"
+                                             Style="background:rgba(245,166,35,0.15); color:#f0f4f8; font-weight:600;">
+                                        @_recommendation.recommended_slot.barber
+                                    </MudChip>
+                                    <MudChip T="string" Icon="@Icons.Material.Filled.CalendarToday"
+                                             Style="background:rgba(245,166,35,0.15); color:#f0f4f8;">
+                                        @(DateTime.TryParse(_recommendation.recommended_slot.date, out var d) ? d.ToString("dd MMM yyyy") : _recommendation.recommended_slot.date)
+                                    </MudChip>
+                                    <MudChip T="string" Icon="@Icons.Material.Filled.Schedule"
+                                             Style="background:rgba(245,166,35,0.15); color:#f0f4f8;">
+                                        @(_recommendation.recommended_slot.time.Length >= 5 ? _recommendation.recommended_slot.time[..5] : _recommendation.recommended_slot.time)
+                                    </MudChip>
+                                    <MudChip T="string" Icon="@Icons.Material.Filled.Star"
+                                             Style="background:rgba(245,166,35,0.15); color:#f0f4f8;">
+                                        Scor: @_recommendation.score_breakdown.total.ToString("0.0")/100
+                                    </MudChip>
+                                </MudStack>
+
+                                @* AI reason *@
+                                @if (!string.IsNullOrEmpty(_recommendation.reason))
+                                {
+                                    <MudText Typo="Typo.body2" Align="Align.Center"
+                                             Style="color:#8fa3ba; font-style:italic;">
+                                        "@_recommendation.reason"
+                                    </MudText>
+                                }
+
+                                @* CTA button *@
+                                <MudStack AlignItems="AlignItems.Center">
+                                    <MudButton Variant="Variant.Filled"
+                                               Style="background:#F5A623; color:#000; font-weight:700; border-radius:50px; min-width:240px;"
+                                               StartIcon="@Icons.Material.Filled.CalendarMonth"
+                                               OnClick='@(() => Navigation.NavigateTo($"/barber/{_recommendation.recommended_slot.barberId}"))'>
+                                        Programează-te la @_recommendation.recommended_slot.barber
+                                    </MudButton>
+                                </MudStack>
+                            </MudStack>
+                        </MudPaper>
+                    }
+                    else
+                    {
+                        @* Fallback: no recommendation loaded, show generic button *@
+                        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                            <MudButton Variant="Variant.Outlined"
+                                       Style="border-color:#F5A623; color:#F5A623; border-radius:50px;"
+                                       StartIcon="@Icons.Material.Filled.Refresh"
+                                       OnClick="RequestSchedulingRecommendation">
+                                Găsește-mi o programare
+                            </MudButton>
+                            <MudButton Variant="Variant.Text"
+                                       Style="color:#8fa3ba;"
+                                       StartIcon="@Icons.Material.Filled.CalendarMonth"
+                                       OnClick='@(() => Navigation.NavigateTo("/"))'>
+                                Vezi toți frizerii
+                            </MudButton>
+                        </MudStack>
+                    }
+                }
+
+            </MudStack>
+        </MudPaper>
+        } @* end else (normal analysis) *@
+    }
+
+</MudContainer>
+
+@code {
+    // ── State ──────────────────────────────────────────────────────────────
+
+    // Reference photo (fresh haircut — persisted)
+    private string? _referencePhotoUrl;      // URL returned from backend
+    private string? _referencePhotoDataUrl;  // downloaded as data URL for display
+    private bool _referenceFileMissing;      // true when DB has URL but file is gone
+    private IBrowserFile? _refPhotoFile;     // file picked via InputFile
+    private string? _refCapturedDataUrl;     // base64 captured from camera
+    private string? _refPreviewDataUrl;      // shown as preview
+    private bool _refCameraActive;
+    private bool _savingRef;
+
+    // Current photo (for analysis only — not saved)
+    private IBrowserFile? _curPhotoFile;
+    private string? _curCapturedDataUrl;
+    private string? _curPreviewDataUrl;
+    private bool _curCameraActive;
+
+    private bool _analyzing;
+    private bool _cameraSupported;
+    private HaircutAnalysisResult? _result;
+
+    // Scheduling recommendation (shown when needs_haircut == true)
+    private AiRecommendResponse? _recommendation;
+    private bool _loadingRecommendation;
+    private List<BarberDto> _barbers = new();
+
+    // ── Lifecycle ──────────────────────────────────────────────────────────
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(LoadReferencePhoto(), LoadBarbersAsync());
+    }
+
+    private async Task LoadBarbersAsync()
+    {
+        try { _barbers = await BarberService.GetAllBarbersAsync(); }
+        catch { /* non-critical */ }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _cameraSupported = await JS.InvokeAsync<bool>("SmartCutCamera.isCameraSupported");
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadReferencePhoto()
+    {
+        try
+        {
+            var response = await ApiService.GetAsync("api/profile/fresh-haircut-photo");
+            if (!response.IsSuccessStatusCode) return;
+
+            var dto = await response.Content.ReadFromJsonAsync<FreshPhotoUrlResponse>();
+            if (string.IsNullOrEmpty(dto?.photoUrl)) return;
+
+            _referencePhotoUrl = dto.photoUrl;
+
+            // Download the actual image bytes to display as data URL
+            // This avoids depending on a static-files URL being accessible from the browser
+            var apiBase = Configuration["ApiBaseUrl"] ?? "http://localhost:5000";
+            var fullUrl = dto.photoUrl.StartsWith("http") ? dto.photoUrl : apiBase.TrimEnd('/') + dto.photoUrl;
+            try
+            {
+                using var imgHttp = HttpClientFactory.CreateClient();
+                var imgResponse = await imgHttp.GetAsync(fullUrl);
+                if (imgResponse.IsSuccessStatusCode)
+                {
+                    var bytes = await imgResponse.Content.ReadAsByteArrayAsync();
+                    var mime = imgResponse.Content.Headers.ContentType?.MediaType ?? "image/jpeg";
+                    _referencePhotoDataUrl = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
+                    _referenceFileMissing = false;
+                }
+                else
+                {
+                    // File is gone (e.g. after container rebuild) — tell user to re-upload
+                    _referenceFileMissing = true;
+                    _referencePhotoUrl = null;
+                }
+            }
+            catch
+            {
+                _referenceFileMissing = true;
+                _referencePhotoUrl = null;
+            }
+        }
+        catch { /* not critical */ }
+    }
+
+    // ── Reference photo handlers ───────────────────────────────────────────
+
+    private async Task OnRefFileSelected(InputFileChangeEventArgs e)
+    {
+        _refPhotoFile = e.File;
+        _refCapturedDataUrl = null;
+        _refPreviewDataUrl = await ReadFileAsDataUrl(e.File);
+        StateHasChanged();
+    }
+
+    private async Task StartRefCamera()
+    {
+        _refCameraActive = true;
+        StateHasChanged();
+        await Task.Delay(100); // let Blazor render the <video> element
+        var ok = await JS.InvokeAsync<bool>("SmartCutCamera.startCamera", "ref-video");
+        if (!ok)
+        {
+            _refCameraActive = false;
+            Snackbar.Add("Nu s-a putut accesa camera. Verifică permisiunile din browser.", Severity.Error);
+        }
+        StateHasChanged();
+    }
+
+    private async Task StopRefCamera()
+    {
+        await JS.InvokeVoidAsync("SmartCutCamera.stopCamera");
+        _refCameraActive = false;
+        StateHasChanged();
+    }
+
+    private async Task CaptureReferenceFromCamera()
+    {
+        var dataUrl = await JS.InvokeAsync<string?>("SmartCutCamera.capturePhoto", "ref-video");
+        if (string.IsNullOrEmpty(dataUrl))
+        {
+            Snackbar.Add("Nu s-a putut captura poza.", Severity.Error);
+            return;
+        }
+        _refCapturedDataUrl = dataUrl;
+        _refPhotoFile = null;
+        _refPreviewDataUrl = dataUrl;
+        await StopRefCamera();
+        StateHasChanged();
+    }
+
+    private async Task SaveReferencePhoto()
+    {
+        _savingRef = true;
+        StateHasChanged();
+        try
+        {
+            using var content = new MultipartFormDataContent();
+
+            if (_refPhotoFile != null)
+            {
+                var stream = _refPhotoFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+                var fileContent = new StreamContent(stream);
+                fileContent.Headers.ContentType = new MediaTypeHeaderValue(_refPhotoFile.ContentType);
+                content.Add(fileContent, "photo", _refPhotoFile.Name);
+            }
+            else if (!string.IsNullOrEmpty(_refCapturedDataUrl))
+            {
+                var bytes = DataUrlToBytes(_refCapturedDataUrl);
+                var byteContent = new ByteArrayContent(bytes);
+                byteContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+                content.Add(byteContent, "photo", "capture.jpg");
+            }
+            else
+            {
+                Snackbar.Add("Nicio poză selectată.", Severity.Warning);
+                return;
+            }
+
+            var response = await ApiService.PutMultipartAsync("api/profile/fresh-haircut-photo", content);
+            if (response.IsSuccessStatusCode)
+            {
+                var dto = await response.Content.ReadFromJsonAsync<FreshPhotoUrlResponse>();
+                _referencePhotoUrl = dto?.photoUrl;
+                // Show the uploaded photo immediately as data URL (no need to re-download)
+                if (!string.IsNullOrEmpty(_refCapturedDataUrl))
+                    _referencePhotoDataUrl = _refCapturedDataUrl;
+                else if (_refPhotoFile != null)
+                    _referencePhotoDataUrl = _refPreviewDataUrl;
+                _referenceFileMissing = false;
+                _refPhotoFile = null;
+                _refCapturedDataUrl = null;
+                _refPreviewDataUrl = null;
+                Snackbar.Add("Poza de referință salvată cu succes!", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Eroare la salvarea pozei. Încearcă din nou.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Eroare: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _savingRef = false;
+            StateHasChanged();
+        }
+    }
+
+    // ── Current photo handlers ─────────────────────────────────────────────
+
+    private async Task OnCurFileSelected(InputFileChangeEventArgs e)
+    {
+        _curPhotoFile = e.File;
+        _curCapturedDataUrl = null;
+        _curPreviewDataUrl = await ReadFileAsDataUrl(e.File);
+        _result = null;
+        StateHasChanged();
+    }
+
+    private async Task StartCurCamera()
+    {
+        _curCameraActive = true;
+        StateHasChanged();
+        await Task.Delay(100);
+        var ok = await JS.InvokeAsync<bool>("SmartCutCamera.startCamera", "cur-video");
+        if (!ok)
+        {
+            _curCameraActive = false;
+            Snackbar.Add("Nu s-a putut accesa camera. Verifică permisiunile din browser.", Severity.Error);
+        }
+        StateHasChanged();
+    }
+
+    private async Task StopCurCamera()
+    {
+        await JS.InvokeVoidAsync("SmartCutCamera.stopCamera");
+        _curCameraActive = false;
+        StateHasChanged();
+    }
+
+    private async Task CaptureCurrentFromCamera()
+    {
+        var dataUrl = await JS.InvokeAsync<string?>("SmartCutCamera.capturePhoto", "cur-video");
+        if (string.IsNullOrEmpty(dataUrl))
+        {
+            Snackbar.Add("Nu s-a putut captura poza.", Severity.Error);
+            return;
+        }
+        _curCapturedDataUrl = dataUrl;
+        _curPhotoFile = null;
+        _curPreviewDataUrl = dataUrl;
+        _result = null;
+        await StopCurCamera();
+        StateHasChanged();
+    }
+
+    // ── Analysis ───────────────────────────────────────────────────────────
+
+    private async Task RunAnalysis()
+    {
+        if (string.IsNullOrEmpty(_referencePhotoUrl))
+        {
+            Snackbar.Add("Salvează mai întâi poza de referință.", Severity.Warning);
+            return;
+        }
+
+        _analyzing = true;
+        _result = null;
+        StateHasChanged();
+
+        try
+        {
+            var aiHttp = HttpClientFactory.CreateClient("AiService");
+            using var content = new MultipartFormDataContent();
+
+            // current photo
+            if (_curPhotoFile != null)
+            {
+                var stream = _curPhotoFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+                var fileContent = new StreamContent(stream);
+                fileContent.Headers.ContentType = new MediaTypeHeaderValue(_curPhotoFile.ContentType);
+                content.Add(fileContent, "current_photo", _curPhotoFile.Name);
+            }
+            else if (!string.IsNullOrEmpty(_curCapturedDataUrl))
+            {
+                var bytes = DataUrlToBytes(_curCapturedDataUrl);
+                var byteContent = new ByteArrayContent(bytes);
+                byteContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+                content.Add(byteContent, "current_photo", "capture.jpg");
+            }
+
+            // reference photo URL
+            content.Add(new StringContent(_referencePhotoUrl), "reference_photo_url");
+
+            var response = await aiHttp.PostAsync("haircut/analyze", content);
+            if (response.IsSuccessStatusCode)
+            {
+                _result = await response.Content.ReadFromJsonAsync<HaircutAnalysisResult>();
+                // If AI says haircut needed, automatically fetch scheduling recommendation
+                if (_result?.needs_haircut == true)
+                    await RequestSchedulingRecommendation();
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Eroare analiză AI: {error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Nu s-a putut conecta la serviciul AI: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _analyzing = false;
+            StateHasChanged();
+        }
+    }
+
+    // ── Scheduling recommendation ────────────────────────────────────────────
+
+    private async Task RequestSchedulingRecommendation()
+    {
+        if (!_barbers.Any()) return;
+
+        _loadingRecommendation = true;
+        _recommendation = null;
+        StateHasChanged();
+
+        try
+        {
+            var user = await AuthService.GetCurrentUserAsync();
+            var tomorrow = DateTime.Today.AddDays(1).ToString("yyyy-MM-dd");
+            var timeSlots = new[] {
+                ("09:00:00", "10:00:00"),
+                ("11:00:00", "12:00:00"),
+                ("14:00:00", "15:00:00")
+            };
+
+            var slots = new List<AiSlotInfo>();
+            foreach (var barber in _barbers.Where(b => b.Services.Any()))
+            {
+                var svc = barber.Services.First();
+                foreach (var (start, end) in timeSlots)
+                {
+                    slots.Add(new AiSlotInfo
+                    {
+                        barberId = barber.Id.ToString(),
+                        barberName = barber.Name,
+                        barberRating = barber.AverageRating > 0 ? barber.AverageRating : null,
+                        serviceId = svc.Id.ToString(),
+                        date = tomorrow,
+                        startTime = start,
+                        endTime = end
+                    });
+                }
+            }
+
+            if (!slots.Any()) return;
+
+            var request = new AiRecommendRequest
+            {
+                userId = user?.Id.ToString() ?? string.Empty,
+                availableSlots = slots,
+                city = "Iasi",
+                includeCalendar = false
+            };
+
+            var aiHttp = HttpClientFactory.CreateClient("AiService");
+            var resp = await aiHttp.PostAsJsonAsync("/recommend", request);
+            if (resp.IsSuccessStatusCode)
+                _recommendation = await resp.Content.ReadFromJsonAsync<AiRecommendResponse>();
+        }
+        catch { /* best-effort */ }
+        finally
+        {
+            _loadingRecommendation = false;
+            StateHasChanged();
+        }
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────
+
+    private static async Task<string> ReadFileAsDataUrl(IBrowserFile file)
+    {
+        using var ms = new System.IO.MemoryStream();
+        await file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(ms);
+        var base64 = Convert.ToBase64String(ms.ToArray());
+        return $"data:{file.ContentType};base64,{base64}";
+    }
+
+    private static byte[] DataUrlToBytes(string dataUrl)
+    {
+        // data:image/jpeg;base64,<data>
+        var idx = dataUrl.IndexOf(',');
+        return Convert.FromBase64String(dataUrl[(idx + 1)..]);
+    }
+
+    private string FixUrl(string? url)
+    {
+        if (string.IsNullOrEmpty(url)) return string.Empty;
+        if (url.StartsWith("http")) return url;
+        var apiBase = Configuration["ApiBaseUrl"] ?? "http://localhost:5000";
+        return apiBase.TrimEnd('/') + url;
+    }
+
+    private static string GrowthLabel(string level) => level switch
+    {
+        "none"        => "Nicio creștere",
+        "minimal"     => "Minimă",
+        "moderate"    => "Moderată",
+        "significant" => "Semnificativă",
+        "excessive"   => "Excesivă",
+        _             => "Necunoscut",
+    };
+}
