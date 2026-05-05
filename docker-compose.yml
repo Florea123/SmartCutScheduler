@@ -65,11 +65,11 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: "Host=smartcut_postgres;Port=5432;Database=smartcutscheduler;Username=postgres;Password=postgres"
       NPGSQL_ENABLE_LEGACY_TIMESTAMP_BEHAVIOR: "true"
+      AzureStorage__ConnectionString: "${AZURE_STORAGE_CONNECTION_STRING}"
+      AzureStorage__ProfileImagesContainer: "profile-images"
+      AzureStorage__FreshHaircutPhotosContainer: "fresh-haircut-photos"
     ports:
       - "5000:5000"
-    volumes:
-      - ./backend/src/SmartCutScheduler.Api/wwwroot/profile-images:/app/wwwroot/profile-images
-      - ./backend/src/SmartCutScheduler.Api/wwwroot/fresh-haircut-photos:/app/wwwroot/fresh-haircut-photos
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 15s

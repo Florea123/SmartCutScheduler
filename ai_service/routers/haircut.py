@@ -140,7 +140,14 @@ async def analyze_haircut(
     confidence: float = float(analysis.get("confidence", 0.0))
     growth_level: str = str(analysis.get("hair_growth_level", "unknown"))
     reason: str = str(analysis.get("reason", ""))
-    estimated_weeks: Optional[int] = analysis.get("estimated_weeks_since_haircut")
+    raw_weeks = analysis.get("estimated_weeks_since_haircut")
+    estimated_weeks: Optional[int] = None
+    if raw_weeks is not None:
+        try:
+            # Guard against Gemini returning a string like "3-5 weeks" instead of an int
+            estimated_weeks = int(str(raw_weeks).split("-")[0].split("–")[0].strip().split()[0])
+        except (ValueError, IndexError):
+            estimated_weeks = None
 
     # ── Build recommendation message when haircut is needed ────────────────
     recommendation_message: Optional[str] = None

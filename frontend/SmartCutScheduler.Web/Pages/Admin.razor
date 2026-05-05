@@ -46,6 +46,10 @@
                         <span class="tab-badge">@_barbers.Count</span>
                     }
                 </button>
+                <button class="admin-tab-btn @(_activeTab == 3 ? "active" : "")" @onclick="() => _activeTab = 3">
+                    <MudIcon Icon="@Icons.Material.Filled.BarChart" Class="tab-icon" />
+                    Statistici
+                </button>
             </div>
 
             @* ══ Tab 0: Adaugă Frizer ══ *@
@@ -339,6 +343,122 @@
                     }
                 </div>
             }
+            @* ══ Tab 3: Statistici ══ *@
+            @if (_activeTab == 3)
+            {
+                <div class="admin-panel">
+                    <MudText Typo="Typo.h6" Class="panel-title mb-6">
+                        <MudIcon Icon="@Icons.Material.Filled.BarChart" Class="mr-2" Style="color:#F5A623; vertical-align:middle;" />
+                        Statistici Platformă
+                    </MudText>
+
+                    @* ── KPI Cards ── *@
+                    <MudGrid Spacing="3" Class="mb-6">
+                        <MudItem xs="6" sm="3">
+                            <div class="kpi-card">
+                                <div class="kpi-icon" style="background:rgba(245,166,35,0.12); border-color:rgba(245,166,35,0.3);">
+                                    <MudIcon Icon="@Icons.Material.Filled.People" Style="color:#F5A623;" />
+                                </div>
+                                <div class="kpi-value">@_users.Count</div>
+                                <div class="kpi-label">Total utilizatori</div>
+                            </div>
+                        </MudItem>
+                        <MudItem xs="6" sm="3">
+                            <div class="kpi-card">
+                                <div class="kpi-icon" style="background:rgba(76,175,80,0.12); border-color:rgba(76,175,80,0.3);">
+                                    <MudIcon Icon="@Icons.Material.Filled.PersonOutline" Style="color:#66BB6A;" />
+                                </div>
+                                <div class="kpi-value" style="color:#66BB6A;">@_users.Count(u => u.Role == "Customer")</div>
+                                <div class="kpi-label">Clienți</div>
+                            </div>
+                        </MudItem>
+                        <MudItem xs="6" sm="3">
+                            <div class="kpi-card">
+                                <div class="kpi-icon" style="background:rgba(33,150,243,0.12); border-color:rgba(33,150,243,0.3);">
+                                    <MudIcon Icon="@Icons.Material.Filled.ContentCut" Style="color:#42A5F5;" />
+                                </div>
+                                <div class="kpi-value" style="color:#42A5F5;">@_barbers.Count(b => b.IsActive)</div>
+                                <div class="kpi-label">Frizeri activi</div>
+                            </div>
+                        </MudItem>
+                        <MudItem xs="6" sm="3">
+                            <div class="kpi-card">
+                                <div class="kpi-icon" style="background:rgba(156,39,176,0.12); border-color:rgba(156,39,176,0.3);">
+                                    <MudIcon Icon="@Icons.Material.Filled.MiscellaneousServices" Style="color:#AB47BC;" />
+                                </div>
+                                <div class="kpi-value" style="color:#AB47BC;">@_barbers.Sum(b => b.Services.Count)</div>
+                                <div class="kpi-label">Servicii totale</div>
+                            </div>
+                        </MudItem>
+                    </MudGrid>
+
+                    @* ── Charts row ── *@
+                    <MudGrid Spacing="3">
+                        @* Pie: distribuție utilizatori pe roluri *@
+                        <MudItem xs="12" md="5">
+                            <div class="chart-card">
+                                <MudText Typo="Typo.subtitle1" Style="font-weight:700; color:#f0f4f8;" Class="mb-4">Distribuție utilizatori</MudText>
+                                @if (_users.Any())
+                                {
+                                    <MudChart T="double" ChartType="ChartType.Pie"
+                                              InputData="@_roleChartData"
+                                              InputLabels="@_roleChartLabels"
+                                              Width="100%" Height="380px"
+                                              ChartOptions="@_pieOptions" />
+                                    <div class="chart-legend mt-3">
+                                        <span class="legend-dot" style="background:#F5A623;"></span><span class="legend-text">Clienți (@_users.Count(u => u.Role == "Customer"))</span>
+                                        <span class="legend-dot" style="background:#42A5F5;"></span><span class="legend-text">Frizeri (@_users.Count(u => u.Role == "Barber"))</span>
+                                        <span class="legend-dot" style="background:#EF5350;"></span><span class="legend-text">Admini (@_users.Count(u => u.Role == "Admin"))</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="chart-empty"><MudText Style="color:#8fa3ba;">Nu există date.</MudText></div>
+                                }
+                            </div>
+                        </MudItem>
+
+                        @* Bar: servicii per frizer *@
+                        <MudItem xs="12" md="7">
+                            <div class="chart-card">
+                                <MudText Typo="Typo.subtitle1" Style="font-weight:700; color:#f0f4f8;" Class="mb-4">Servicii per frizer</MudText>
+                                @if (_barbers.Any())
+                                {
+                                    <MudChart T="double" ChartType="ChartType.Bar"
+                                              ChartSeries="@_barberServicesSeries"
+                                              XAxisLabels="@_barberNames"
+                                              Width="100%" Height="380px"
+                                              ChartOptions="@_barOptions" />
+                                }
+                                else
+                                {
+                                    <div class="chart-empty"><MudText Style="color:#8fa3ba;">Nu există date.</MudText></div>
+                                }
+                            </div>
+                        </MudItem>
+
+                        @* Bar: utilizatori înregistrați pe lună *@
+                        <MudItem xs="12">
+                            <div class="chart-card">
+                                <MudText Typo="Typo.subtitle1" Style="font-weight:700; color:#f0f4f8;" Class="mb-4">Înregistrări pe lună (ultimele 6 luni)</MudText>
+                                @if (_users.Any())
+                                {
+                                    <MudChart T="double" ChartType="ChartType.Line"
+                                              ChartSeries="@_registrationSeries"
+                                              XAxisLabels="@_registrationLabels"
+                                              Width="100%" Height="320px"
+                                              ChartOptions="@_lineOptions" />
+                                }
+                                else
+                                {
+                                    <div class="chart-empty"><MudText Style="color:#8fa3ba;">Nu există date.</MudText></div>
+                                }
+                            </div>
+                        </MudItem>
+                    </MudGrid>
+                </div>
+            }
+
         </div>
     </MudContainer>
 </div>
@@ -652,6 +772,80 @@
         };
     }
 
+    // ── Chart data ──────────────────────────────────────────────────
+
+    // Pie: distribuție roluri
+    private double[] _roleChartData => new double[]
+    {
+        _users.Count(u => u.Role == "Customer"),
+        _users.Count(u => u.Role == "Barber"),
+        _users.Count(u => u.Role == "Admin"),
+    };
+    private string[] _roleChartLabels => new[] { "Clienți", "Frizeri", "Admini" };
+    private ChartOptions _pieOptions = new ChartOptions
+    {
+        ChartPalette = new[] { "#F5A623", "#42A5F5", "#EF5350" },
+    };
+
+    // Bar: servicii per frizer
+    private List<ChartSeries<double>> _barberServicesSeries => new()
+    {
+        new ChartSeries<double>
+        {
+            Name = "Servicii",
+            Data = _barbers.Select(b => (double)b.Services.Count).ToArray()
+        }
+    };
+    private string[] _barberNames => _barbers.Select(b =>
+        b.Name.Length > 10 ? b.Name[..10] + "…" : b.Name).ToArray();
+    private ChartOptions _barOptions = new ChartOptions
+    {
+        ChartPalette = new[] { "#F5A623" },
+    };
+
+    // Line: înregistrări per lună
+    private List<ChartSeries<double>> _registrationSeries => new()
+    {
+        new ChartSeries<double>
+        {
+            Name = "Utilizatori noi",
+            Data = GetRegistrationsPerMonth()
+        }
+    };
+    private string[] _registrationLabels => GetLastSixMonthLabels();
+    private ChartOptions _lineOptions = new ChartOptions
+    {
+        ChartPalette = new[] { "#F5A623" },
+    };
+
+    private double[] GetRegistrationsPerMonth()
+    {
+        var now = DateTime.UtcNow;
+        var result = new double[6];
+        for (int i = 0; i < 6; i++)
+        {
+            var month = now.AddMonths(-(5 - i));
+            result[i] = _users.Count(u =>
+                u.CreatedAtUtc.Year == month.Year &&
+                u.CreatedAtUtc.Month == month.Month);
+        }
+        return result;
+    }
+
+    private string[] GetLastSixMonthLabels()
+    {
+        var now = DateTime.UtcNow;
+        var romanianMonths = new[]
+        {
+            "Ian", "Feb", "Mar", "Apr", "Mai", "Iun",
+            "Iul", "Aug", "Sep", "Oct", "Nov", "Dec"
+        };
+        return Enumerable.Range(0, 6)
+            .Select(i => romanianMonths[now.AddMonths(-(5 - i)).Month - 1])
+            .ToArray();
+    }
+
+    // ── DTOs ────────────────────────────────────────────────────────
     public class CreateBarberRequest
     {
         public string Name { get; set; } = string.Empty;
@@ -665,6 +859,70 @@
 }
 
 <style>
+    /* ── KPI Cards ── */
+    .kpi-card {
+        background: #132236;
+        border: 1px solid #1e3a56;
+        border-radius: 16px;
+        padding: 20px 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        text-align: center;
+    }
+    .kpi-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        border: 1px solid;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .kpi-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #F5A623;
+        line-height: 1;
+    }
+    .kpi-label {
+        font-size: 0.78rem;
+        color: #8fa3ba;
+        font-weight: 500;
+    }
+
+    /* ── Chart cards ── */
+    .chart-card {
+        background: #132236;
+        border: 1px solid #1e3a56;
+        border-radius: 16px;
+        padding: 24px;
+    }
+    .chart-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 200px;
+    }
+    .chart-legend {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .legend-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 4px;
+    }
+    .legend-text {
+        font-size: 0.82rem;
+        color: #8fa3ba;
+    }
+
     /* ── Page wrapper ── */
     .admin-page {
         min-height: 100vh;
