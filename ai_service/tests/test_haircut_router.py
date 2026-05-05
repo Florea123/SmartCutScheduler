@@ -225,3 +225,16 @@ class TestHaircutAnalyzeWithUrl:
             response = await async_client.post("/haircut/analyze", files=files, data=data)
 
         assert response.status_code == 502
+
+    async def test_invalid_weeks_string_falls_back_to_none(self, async_client):
+        """Gemini returnează un string invalid pentru estimated_weeks_since_haircut -> None."""
+        bad_analysis = {**_GOOD_ANALYSIS, "estimated_weeks_since_haircut": "invalid-value!!"}
+        with patch("routers.haircut.analyze_hair", AsyncMock(return_value=bad_analysis)):
+            files = {
+                "current_photo": ("cur.jpg", io.BytesIO(b"cur"), "image/jpeg"),
+                "reference_photo": ("ref.jpg", io.BytesIO(b"ref"), "image/jpeg"),
+            }
+            response = await async_client.post("/haircut/analyze", files=files)
+
+        assert response.status_code == 200
+        assert response.json()["estimated_weeks_since_haircut"] is None

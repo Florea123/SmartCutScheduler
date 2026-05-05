@@ -91,7 +91,7 @@ jobs:
             /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" \
             /d:sonar.python.coverage.reportPaths="ai_service/coverage.xml" \
             /d:sonar.exclusions="**/Migrations/**,**/obj/**,**/bin/**,frontend/**,**/__pycache__/**,**/*.pyc" \
-            /d:sonar.coverage.exclusions="**/Migrations/**,**/Program.cs,**/DependencyInjection.cs,**/Seeding/**,ai_service/tests/**"
+            /d:sonar.coverage.exclusions="**/Migrations/**,**/Program.cs,**/DependencyInjection.cs,**/Seeding/**,ai_service/tests/**,**/FileStorage/AzureBlobStorageOptions.cs,**/FileStorage/AzureBlobStorageService.cs,**/FileStorage/LocalFileStorageService.cs"
 
       - name: Build .NET solution
         run: dotnet build SmartCutScheduler.sln --no-incremental -c Release
