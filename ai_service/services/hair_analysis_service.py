@@ -265,20 +265,23 @@ async def analyze_hair(
 
 async def fetch_image_from_url(url: str) -> tuple[bytes, str]:
     """
-    Download an image from a URL.
+    Download an image from the trusted backend.
+
+    Accepts either a relative path (/profile-images/...) or an absolute URL.
+    In both cases only the path portion is used and the host is always the
+    configured backend base URL — user-supplied host values are discarded.
 
     Returns (raw_bytes, mime_type).
     Raises httpx.HTTPError on failure.
     """
-    # If the URL is relative (e.g. /profile-images/...) prepend the backend base
-    if url.startswith("/"):
-        url = settings.dotnet_api_url.rstrip("/") + url
-
-    # Validate URL scheme to prevent SSRF – only allow http/https
     parsed = urllib.parse.urlparse(url)
-    if parsed.scheme not in ("http", "https") or not parsed.netloc:
-        raise ValueError(f"Invalid or disallowed URL: {url!r}")
-    safe_url = urllib.parse.urlunparse(parsed)
+    # Extract only the path (+ query + fragment) — discard any user-supplied host
+    path = parsed.path or "/"
+    if parsed.query:
+        path = path + "?" + parsed.query
+
+    backend_base = settings.dotnet_api_url.rstrip("/")
+    safe_url = backend_base + path
 
     async with httpx.AsyncClient(timeout=15) as client:
         response = await client.get(safe_url)

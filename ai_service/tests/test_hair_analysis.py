@@ -208,10 +208,13 @@ class TestFetchImageFromUrl:
             mock_ctx.get = AsyncMock(return_value=mock_response)
             mock_client_cls.return_value = mock_ctx
 
+            # Absolute URL — only the path /photo.jpg is used, host is backend
             data, mime = await fetch_image_from_url("https://example.com/photo.jpg")
 
         assert data == fake_content
         assert mime == "image/jpeg"
+        called_url = mock_ctx.get.call_args[0][0]
+        assert called_url.startswith("https://api:5000")
 
     async def test_relative_url_prepends_backend_base(self):
         fake_content = b"img"
@@ -276,6 +279,7 @@ class TestFetchImageFromUrl:
             mock_ctx.get = AsyncMock(return_value=mock_response)
             mock_client_cls.return_value = mock_ctx
 
-            _, mime = await fetch_image_from_url("https://example.com/photo.jpg")
+            # Only path /photo.jpg is used
+            _, mime = await fetch_image_from_url("/photo.jpg")
 
         assert mime == "image/jpeg"
