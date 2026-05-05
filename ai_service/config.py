@@ -19,9 +19,9 @@ class Settings(BaseSettings):
 
     # Google Gemini
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-flash-lite-latest"
+    gemini_model: str = "gemini-2.0-flash-lite"
     # Vision model for multimodal image analysis (hair-check feature)
-    gemini_vision_model: str = "gemini-flash-lite-latest"
+    gemini_vision_model: str = "gemini-2.0-flash-lite"
 
     # OpenWeatherMap
     weather_api_key: str = ""

@@ -273,15 +273,18 @@
                 <MudStack AlignItems="AlignItems.Center" Spacing="3">
                     <MudIcon Icon="@(_result.error_type == "different_person"
                                         ? Icons.Material.Filled.PeopleAlt
-                                        : Icons.Material.Filled.PersonOff)"
+                                        : _result.error_type == "service_unavailable"
+                                            ? Icons.Material.Filled.CloudOff
+                                            : Icons.Material.Filled.PersonOff)"
                              Style="font-size:3.5rem; color:#FFA726;" />
                     <MudText Typo="Typo.h5" Align="Align.Center"
                              Style="font-weight:800; color:#FFB74D;">
                         @(_result.error_type switch {
-                            "no_person_reference" => "Poza de referință nu e validă",
-                            "no_person_current"   => "Poza actuală nu e validă",
-                            "different_person"    => "Persoane diferite detectate",
-                            _                     => "Poza nu poate fi analizată"
+                            "no_person_reference"  => "Poza de referință nu e validă",
+                            "no_person_current"    => "Poza actuală nu e validă",
+                            "different_person"     => "Persoane diferite detectate",
+                            "service_unavailable"  => "Serviciu temporar indisponibil",
+                            _                      => "Poza nu poate fi analizată"
                         })
                     </MudText>
                     <MudPaper Elevation="0" Class="pa-4"

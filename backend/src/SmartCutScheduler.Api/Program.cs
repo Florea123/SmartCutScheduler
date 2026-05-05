@@ -126,26 +126,33 @@ using (var scope = app.Services.CreateScope())
     // Apply schema: try MigrateAsync first (works if DB was created via migrations),
     // then fall back to EnsureCreatedAsync + manual column patching for DBs
     // created with EnsureCreatedAsync (no __EFMigrationsHistory table).
-    var canMigrate = await db.Database.CanConnectAsync();
-    if (canMigrate)
+    if (db.Database.IsRelational())
     {
-        try
+        var canMigrate = await db.Database.CanConnectAsync();
+        if (canMigrate)
+        {
+            try
+            {
+                await db.Database.MigrateAsync();
+            }
+            catch
+            {
+                // DB exists but was not created through migrations — patch manually
+                await db.Database.EnsureCreatedAsync();
+                await db.Database.ExecuteSqlRawAsync(@"
+                    ALTER TABLE ""Users""
+                    ADD COLUMN IF NOT EXISTS ""FreshHaircutPhotoUrl"" text;
+                ");
+            }
+        }
+        else
         {
             await db.Database.MigrateAsync();
-        }
-        catch
-        {
-            // DB exists but was not created through migrations — patch manually
-            await db.Database.EnsureCreatedAsync();
-            await db.Database.ExecuteSqlRawAsync(@"
-                ALTER TABLE ""Users""
-                ADD COLUMN IF NOT EXISTS ""FreshHaircutPhotoUrl"" text;
-            ");
         }
     }
     else
     {
-        await db.Database.MigrateAsync();
+        await db.Database.EnsureCreatedAsync();
     }
     
     var adminName = builder.Configuration["SeedAdmin:Name"] ?? "Admin";

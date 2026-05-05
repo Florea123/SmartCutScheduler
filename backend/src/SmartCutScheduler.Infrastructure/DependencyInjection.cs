@@ -55,7 +55,14 @@ public static class DependencyInjection
         services.AddSingleton<IPasswordService, PasswordService>();
 
         // File Storage
-        services.AddScoped<IFileStorageService, FileStorage.LocalFileStorageService>();
+        services.Configure<FileStorage.AzureBlobStorageOptions>(
+            configuration.GetSection(FileStorage.AzureBlobStorageOptions.SectionName));
+        services.AddSingleton(sp =>
+        {
+            var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<FileStorage.AzureBlobStorageOptions>>().Value;
+            return new Azure.Storage.Blobs.BlobServiceClient(opts.ConnectionString);
+        });
+        services.AddScoped<IFileStorageService, FileStorage.AzureBlobStorageService>();
 
         return services;
     }
