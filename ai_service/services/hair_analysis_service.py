@@ -9,6 +9,7 @@ The analysis is fully vision-based — no measurements, only visual comparison.
 import asyncio
 import json
 import logging
+import urllib.parse
 from functools import partial
 from typing import Optional
 
@@ -25,31 +26,36 @@ _DEFAULT_IMAGE_MIME = "image/jpeg"
 # ---------------------------------------------------------------------------
 
 _ANALYSIS_PROMPT = """\
-You are an expert hair-length analysis AI assistant.
+You are a precise hair-growth comparison assistant. Your ONLY job is to measure
+how much the hair has grown RELATIVE to the reference photo. You are NOT judging
+absolute hair length — you are measuring the DIFFERENCE between two photos of
+the same person.
+
 You will be shown exactly TWO photos:
-  1. REFERENCE photo  — should show a real person right after a fresh haircut (the baseline).
-  2. CURRENT photo    — should show the same real person today.
+  1. REFERENCE photo — taken RIGHT AFTER a fresh haircut. This is the ZERO point.
+     Whatever hair length you see here means growth = 0.
+  2. CURRENT photo   — taken today. Compare against REFERENCE to detect growth.
 
 ══════════════════════════════════════════════════════
 STEP 1 — VALIDATION (check this FIRST, before any analysis)
 ══════════════════════════════════════════════════════
-Before analyzing hair, you MUST validate the photos:
+Check the following before doing any analysis:
 
-a) Does the REFERENCE photo clearly show a real human person (face or head visible)?
-b) Does the CURRENT photo clearly show a real human person (face or head visible)?
-c) Do both photos appear to show the SAME person (similar facial features, skin tone, general appearance)?
+a) Does the REFERENCE photo clearly show a real human person with visible head/hair?
+b) Does the CURRENT photo clearly show a real human person with visible head/hair?
+c) Do both photos appear to be the SAME person (similar face, skin tone, features)?
 
-If validation fails, respond ONLY with this JSON and nothing else:
+If any check fails, respond ONLY with this JSON and nothing else:
 {
   "error": true,
   "error_type": "<see below>",
   "error_message": "<friendly Romanian message>"
 }
 
-Use one of these error_type values:
-- "no_person_reference"  — reference photo does not contain a visible person
-- "no_person_current"    — current photo does not contain a visible person
-- "different_person"     — the two photos appear to show different people
+error_type values:
+- "no_person_reference"  — reference photo does not show a visible person
+- "no_person_current"    — current photo does not show a visible person
+- "different_person"     — the photos appear to show different people
 
 Example error responses:
 - { "error": true, "error_type": "no_person_reference", "error_message": "Poza de referință nu conține o persoană. Te rugăm să încarci o poză în care ești tu după o tunsoare proaspătă." }
@@ -57,28 +63,96 @@ Example error responses:
 - { "error": true, "error_type": "different_person", "error_message": "Pozele par să conțină persoane diferite. Asigură-te că ambele poze sunt cu tine." }
 
 ══════════════════════════════════════════════════════
-STEP 2 — HAIR ANALYSIS (only if validation passed)
+STEP 2 — ANGLE ASSESSMENT (do this before comparing)
 ══════════════════════════════════════════════════════
-Compare the hair length in both photos and decide whether the person needs a haircut.
+Determine the angle/pose in each photo:
+  - Is the head facing front, 3/4, profile (side), or top-down?
 
-Guidelines:
-- Focus on overall hair length, not style or colour differences.
-- "needs_haircut" is true when hair growth is MODERATE or higher.
-- "confidence" reflects how clearly visible and comparable the hair is
-  (e.g. 0.9 if both photos show the full head clearly, lower if blurry/occluded).
-- "hair_growth_level" must be exactly one of:
-    none | minimal | moderate | significant | excessive | unknown
-- "estimated_weeks_since_haircut" is your best integer estimate, or null if
-  it cannot be reasonably inferred from the images.
-- "reason" must be 2-3 concise, friendly sentences grounded only in what you see.
+Then apply these rules:
+
+  ANGLE ILLUSIONS — things that look like growth but are NOT:
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │ 1. SIDE FADE / SIDES: A skin fade or tight side always looks LOOSER    │
+  │    from a profile or 3/4 angle than from the front. Do NOT interpret   │
+  │    this as hair growing out. Fades are only comparable when both       │
+  │    photos show the sides from the same angle.                          │
+  │                                                                        │
+  │ 2. TOP VOLUME: Hair on top appears flatter when photographed from      │
+  │    the front and fuller from a lower or side angle. Volume alone is    │
+  │    not evidence of growth if the photos are from different angles.     │
+  │                                                                        │
+  │ 3. NECKLINE: Visible from the back/side only. Not comparable if one   │
+  │    photo shows the back and the other shows the front.                 │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  RELIABLE SIGNALS (valid even across angles):
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │ • HAIR OVERHANGING THE EARS: Visible from front AND side. If the hair  │
+  │   was above the ear in the reference and now covers it, that IS growth.│
+  │                                                                        │
+  │ • HAIR LENGTH ON TOP (absolute): If in the reference the top hair is  │
+  │   under 2 cm and in the current photo strands are clearly 4+ cm and   │
+  │   falling, that is growth — provided you can see the same region.     │
+  │                                                                        │
+  │ • OVERALL SILHOUETTE SHAPE: If the head shape is noticeably more      │
+  │   rounded or the hair extends much further from the skull in ALL       │
+  │   visible directions, that is growth. One direction alone may be       │
+  │   an angle effect.                                                     │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+══════════════════════════════════════════════════════
+STEP 3 — GROWTH DELTA ANALYSIS
+══════════════════════════════════════════════════════
+
+STEP 3A — Describe the REFERENCE photo:
+  - Head angle/pose
+  - Hair length on top (approximate: buzzed <5mm / very short 5-15mm / short 15-30mm / medium 30-60mm / long 60mm+)
+  - Sides: skin fade / close fade / trimmed / full
+  - Neckline: sharp/clean or growing out?
+
+STEP 3B — Describe the CURRENT photo:
+  - Head angle/pose
+  - Hair length on top
+  - Sides
+  - Neckline
+
+STEP 3C — Compare using ONLY angle-reliable signals from Step 2:
+  For each region, explicitly state:
+    - "This comparison is RELIABLE (same angle or angle-independent signal)"
+    - "This comparison is UNRELIABLE (angle difference makes this misleading)"
+  Only count RELIABLE observations as evidence of growth.
+
+STEP 3D — Assign growth level based ONLY on reliable evidence:
+  "none"        → No reliable visual difference.
+  "minimal"     → Barely perceptible growth from ONE reliable signal only.
+  "moderate"    → Clearly visible growth from at least ONE reliable signal.
+                  Must be something that cannot be explained by angle difference.
+  "significant" → Noticeably longer overall from multiple reliable signals.
+  "excessive"   → Dramatically longer, obvious even across different angles.
+  "unknown"     → Cannot make ANY reliable comparison (both photos too blurry/incomplete).
+
+STEP 3E — Final values:
+  - "needs_haircut": true when growth_level is "moderate", "significant", or "excessive".
+  - "confidence": (0.0–1.0). Reduce by 0.1–0.2 for each comparison region that is
+      UNRELIABLE due to angle. If ALL compared regions are unreliable, confidence < 0.4.
+  - "estimated_weeks_since_haircut": a SINGLE INTEGER or null.
+      none/minimal  → null
+      moderate      → integer between 3 and 5 (e.g. 4)
+      significant   → integer between 6 and 10 (e.g. 7)
+      excessive     → integer above 10 (e.g. 12)
+  - "reason": 2–3 sentences. MUST explicitly state which signals were reliable and
+      which were discarded due to angle. Example: "The fade on the sides appears less
+      sharp in the current photo, but this is likely due to the profile angle and was
+      discounted. The hair on top, which is visible in both photos, appears to be at
+      a similar length, so no significant growth was detected."
 
 Reply ONLY with valid JSON — no markdown, no code fences, no extra text:
 {
-  "needs_haircut": true,
-  "confidence": 0.85,
-  "hair_growth_level": "moderate",
+  "needs_haircut": false,
+  "confidence": 0.75,
+  "hair_growth_level": "none",
   "reason": "...",
-  "estimated_weeks_since_haircut": 5
+  "estimated_weeks_since_haircut": null
 }
 """
 
@@ -179,6 +253,13 @@ async def analyze_hair(
         return _fallback_response("AI returned an unexpected response — please try again.")
     except Exception as exc:
         logger.error("Hair analysis failed: %s", exc)
+        exc_str = str(exc)
+        if any(code in exc_str for code in ("503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED")):
+            return {
+                "error": True,
+                "error_type": "service_unavailable",
+                "error_message": "Serviciul de analiză este momentan supraîncărcat. Te rugăm să încerci din nou în câteva momente.",
+            }
         return _fallback_response(f"Analysis unavailable: {exc}")
 
 
@@ -193,8 +274,14 @@ async def fetch_image_from_url(url: str) -> tuple[bytes, str]:
     if url.startswith("/"):
         url = settings.dotnet_api_url.rstrip("/") + url
 
+    # Validate URL scheme to prevent SSRF – only allow http/https
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise ValueError(f"Invalid or disallowed URL: {url!r}")
+    safe_url = urllib.parse.urlunparse(parsed)
+
     async with httpx.AsyncClient(timeout=15) as client:
-        response = await client.get(url)
+        response = await client.get(safe_url)
         response.raise_for_status()
         content_type = response.headers.get("content-type", _DEFAULT_IMAGE_MIME).split(";")[0].strip()
         return response.content, content_type
