@@ -1,0 +1,116 @@
+name: CI – Build, Test & SonarCloud
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  # ── 1. Python AI service tests ────────────────────────────────────────────
+  test-python:
+    name: Python Tests (AI Service)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: ai_service/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest-cov
+        working-directory: ai_service
+
+      - name: Run tests with coverage
+        run: |
+          python -m pytest tests/ \
+            --cov=. \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term-missing \
+            -q
+        working-directory: ai_service
+        env:
+          GEMINI_API_KEY: "ci-dummy-key"
+          DOTNET_API_URL: "http://localhost:5000"
+
+      - name: Upload Python coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-coverage
+          path: ai_service/coverage.xml
+          retention-days: 1
+
+  # ── 2. .NET build + test + SonarCloud ─────────────────────────────────────
+  build-test-sonar:
+    name: .NET Build, Test & SonarCloud
+    runs-on: ubuntu-latest
+    needs: test-python
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0      # SonarCloud necesită istoricul complet
+
+      - name: Download Python coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: python-coverage
+          path: ai_service/
+
+      - name: Set up .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install dotnet-sonarscanner
+        run: dotnet tool install --global dotnet-sonarscanner
+
+      - name: Restore NuGet packages
+        run: dotnet restore SmartCutScheduler.sln
+
+      - name: SonarCloud – Begin scan
+        run: |
+          dotnet sonarscanner begin \
+            /k:"${{ secrets.SONAR_PROJECT_KEY }}" \
+            /o:"${{ secrets.SONAR_ORGANIZATION }}" \
+            /d:sonar.host.url="https://sonarcloud.io" \
+            /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
+            /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" \
+            /d:sonar.python.coverage.reportPaths="ai_service/coverage.xml" \
+            /d:sonar.exclusions="**/Migrations/**,**/obj/**,**/bin/**,frontend/**,**/__pycache__/**,**/*.pyc" \
+            /d:sonar.coverage.exclusions="**/Migrations/**,**/Program.cs,**/DependencyInjection.cs,**/Seeding/**,ai_service/tests/**"
+
+      - name: Build .NET solution
+        run: dotnet build SmartCutScheduler.sln --no-incremental -c Release
+
+      - name: Run .NET tests with coverage
+        run: |
+          dotnet test tests/SmartCutScheduler.Tests/SmartCutScheduler.Tests.csproj \
+            -c Release \
+            /p:CollectCoverage=true \
+            /p:CoverletOutputFormat=opencover \
+            /p:CoverletOutput=coverage.opencover.xml \
+            --logger "trx;LogFileName=test-results.trx" \
+            --no-build
+
+      - name: SonarCloud – End scan & upload
+        run: dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload .NET test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dotnet-test-results
+          path: "**/*.trx"
+          retention-days: 7
