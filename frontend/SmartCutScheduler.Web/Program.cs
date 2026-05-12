@@ -36,6 +36,9 @@ builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<ReviewService>();
 builder.Services.AddScoped<NotificationService>();
 
+// Singleton state store – shared across all components in the session
+builder.Services.AddSingleton<AppState>();
+
 // Add authorization
 builder.Services.AddAuthorizationCore();
 
