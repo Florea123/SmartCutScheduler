@@ -51,7 +51,7 @@ namespace SmartCutScheduler.Tests.Api
         {
             var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
             var response = await client.GetAsync("/api/barbers");
-            response.EnsureSuccessStatusCode();
+            Assert.True(response.IsSuccessStatusCode);
         }
 
         [Fact]

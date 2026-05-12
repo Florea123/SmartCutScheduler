@@ -90,9 +90,9 @@ public class GetBarberReviewsQueryHandler_AllCases
             BarberId = barberId,
             UserId = Guid.NewGuid(),
             Rating = 4,
-            Comment = null,
+            Comment = null!,
             CreatedAt = DateTime.UtcNow,
-            User = null   // navigation property not loaded
+            User = null!   // navigation property not loaded
         };
 
         var handler = CreateHandler(new List<Review> { review }, barberId);

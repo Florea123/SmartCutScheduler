@@ -26,6 +26,8 @@ public class UnitOfWork_AllCases
         await unitOfWorkMock.Object.BeginTransactionAsync();
         await unitOfWorkMock.Object.CommitTransactionAsync();
         await unitOfWorkMock.Object.RollbackTransactionAsync();
-        // No exception expected
+        unitOfWorkMock.Verify(u => u.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }
