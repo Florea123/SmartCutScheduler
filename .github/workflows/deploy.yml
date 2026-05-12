@@ -61,61 +61,61 @@ jobs:
 
       # ── Deploy API ─────────────────────────────────────────────────────────
       - name: Deploy API to Container Apps
-        uses: azure/container-apps-deploy-action@29ee19866ec987ededd70b8412d9ee241a9102d1 # v1
-        with:
-          resourceGroup: ${{ env.RESOURCE_GROUP }}
-          containerAppName: smartcut-api
-          imageToDeploy: ${{ env.REGISTRY }}/smartcut-api:${{ github.sha }}
-          registryUrl: ${{ secrets.REGISTRY_LOGIN_SERVER }}
-          registryUsername: ${{ secrets.REGISTRY_USERNAME }}
-          registryPassword: ${{ secrets.REGISTRY_PASSWORD }}
-          environmentVariables: |
-            ASPNETCORE_ENVIRONMENT=Production
-            ConnectionStrings__DefaultConnection=${{ secrets.DB_CONNECTION_STRING }}
-            Jwt__SigningKey=${{ secrets.JWT_SIGNING_KEY }}
-            Jwt__Issuer=SmartCutScheduler
-            Jwt__Audience=SmartCutSchedulerClient
-            Jwt__AccessTokenMinutes=15
-            Jwt__RefreshTokenDays=7
-            SeedAdmin__Password=${{ secrets.SEED_ADMIN_PASSWORD }}
-            SeedAdmin__Email=admin@smartcut.com
-            SeedAdmin__Name=Admin
-            Stripe__SecretKey=${{ secrets.STRIPE_SECRET_KEY }}
-            Stripe__WebhookSecret=${{ secrets.STRIPE_WEBHOOK_SECRET }}
-            Stripe__SuccessUrl=${{ secrets.FRONTEND_URL }}/
-            Stripe__CancelUrl=${{ secrets.FRONTEND_URL }}/
-            AzureStorage__ConnectionString=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-            AzureStorage__ProfileImagesContainer=profile-images
-            AzureStorage__FreshHaircutPhotosContainer=fresh-haircut-photos
-            Cors__AllowedOrigins__0=${{ secrets.FRONTEND_URL }}
-            NPGSQL_ENABLE_LEGACY_TIMESTAMP_BEHAVIOR=true
+        run: |
+          az containerapp update \
+            --name smartcut-api \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.REGISTRY }}/smartcut-api:${{ github.sha }} \
+            --registry-server ${{ secrets.REGISTRY_LOGIN_SERVER }} \
+            --registry-username ${{ secrets.REGISTRY_USERNAME }} \
+            --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
+            --set-env-vars \
+              "ASPNETCORE_ENVIRONMENT=Production" \
+              "ConnectionStrings__DefaultConnection=${{ secrets.DB_CONNECTION_STRING }}" \
+              "Jwt__SigningKey=${{ secrets.JWT_SIGNING_KEY }}" \
+              "Jwt__Issuer=SmartCutScheduler" \
+              "Jwt__Audience=SmartCutSchedulerClient" \
+              "Jwt__AccessTokenMinutes=15" \
+              "Jwt__RefreshTokenDays=7" \
+              "SeedAdmin__Password=${{ secrets.SEED_ADMIN_PASSWORD }}" \
+              "SeedAdmin__Email=admin@smartcut.com" \
+              "SeedAdmin__Name=Admin" \
+              "Stripe__SecretKey=${{ secrets.STRIPE_SECRET_KEY }}" \
+              "Stripe__WebhookSecret=${{ secrets.STRIPE_WEBHOOK_SECRET }}" \
+              "Stripe__SuccessUrl=${{ secrets.FRONTEND_URL }}/" \
+              "Stripe__CancelUrl=${{ secrets.FRONTEND_URL }}/" \
+              "AzureStorage__ConnectionString=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
+              "AzureStorage__ProfileImagesContainer=profile-images" \
+              "AzureStorage__FreshHaircutPhotosContainer=fresh-haircut-photos" \
+              "Cors__AllowedOrigins__0=${{ secrets.FRONTEND_URL }}" \
+              "NPGSQL_ENABLE_LEGACY_TIMESTAMP_BEHAVIOR=true"
 
       # ── Deploy AI Service ──────────────────────────────────────────────────
       - name: Deploy AI Service to Container Apps
-        uses: azure/container-apps-deploy-action@29ee19866ec987ededd70b8412d9ee241a9102d1 # v1
-        with:
-          resourceGroup: ${{ env.RESOURCE_GROUP }}
-          containerAppName: smartcut-ai
-          imageToDeploy: ${{ env.REGISTRY }}/smartcut-ai:${{ github.sha }}
-          registryUrl: ${{ secrets.REGISTRY_LOGIN_SERVER }}
-          registryUsername: ${{ secrets.REGISTRY_USERNAME }}
-          registryPassword: ${{ secrets.REGISTRY_PASSWORD }}
-          environmentVariables: |
-            DOTNET_API_URL=${{ secrets.API_URL }}
-            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
-            WEATHER_API_KEY=${{ secrets.WEATHER_API_KEY }}
-            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
-            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
-            GOOGLE_REDIRECT_URI=${{ secrets.AI_URL }}/calendar/callback
-            CORS_ORIGINS=${{ secrets.FRONTEND_URL }}
+        run: |
+          az containerapp update \
+            --name smartcut-ai \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.REGISTRY }}/smartcut-ai:${{ github.sha }} \
+            --registry-server ${{ secrets.REGISTRY_LOGIN_SERVER }} \
+            --registry-username ${{ secrets.REGISTRY_USERNAME }} \
+            --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
+            --set-env-vars \
+              "DOTNET_API_URL=${{ secrets.API_URL }}" \
+              "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" \
+              "WEATHER_API_KEY=${{ secrets.WEATHER_API_KEY }}" \
+              "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" \
+              "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+              "GOOGLE_REDIRECT_URI=${{ secrets.AI_URL }}/calendar/callback" \
+              "CORS_ORIGINS=${{ secrets.FRONTEND_URL }}"
 
       # ── Deploy Frontend ────────────────────────────────────────────────────
       - name: Deploy Frontend to Container Apps
-        uses: azure/container-apps-deploy-action@29ee19866ec987ededd70b8412d9ee241a9102d1 # v1
-        with:
-          resourceGroup: ${{ env.RESOURCE_GROUP }}
-          containerAppName: smartcut-frontend
-          imageToDeploy: ${{ env.REGISTRY }}/smartcut-frontend:${{ github.sha }}
-          registryUrl: ${{ secrets.REGISTRY_LOGIN_SERVER }}
-          registryUsername: ${{ secrets.REGISTRY_USERNAME }}
-          registryPassword: ${{ secrets.REGISTRY_PASSWORD }}
+        run: |
+          az containerapp update \
+            --name smartcut-frontend \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.REGISTRY }}/smartcut-frontend:${{ github.sha }} \
+            --registry-server ${{ secrets.REGISTRY_LOGIN_SERVER }} \
+            --registry-username ${{ secrets.REGISTRY_USERNAME }} \
+            --registry-password ${{ secrets.REGISTRY_PASSWORD }}
