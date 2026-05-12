@@ -19,7 +19,7 @@ public class UpdateUserProfileCommandValidator : AbstractValidator<UpdateUserPro
             .WithMessage("Fișierul trebuie să fie o imagine validă (jpg, jpeg, png) și max 2MB.");
     }
 
-    private bool BeAValidImage(IFormFile? file)
+    private static bool BeAValidImage(IFormFile? file)
     {
         if (file == null) return true;
         var allowed = new[] { ".jpg", ".jpeg", ".png" };

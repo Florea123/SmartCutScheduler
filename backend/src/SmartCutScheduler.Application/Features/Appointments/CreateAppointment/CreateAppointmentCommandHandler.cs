@@ -39,7 +39,7 @@ public class CreateAppointmentCommandHandler(
             return Results.BadRequest("Barber does not offer this service.");
 
         // Parse time
-        if (!TimeSpan.TryParse(request.StartTime, out var startTime))
+        if (!TimeSpan.TryParse(request.StartTime, System.Globalization.CultureInfo.InvariantCulture, out var startTime))
             return Results.BadRequest("Invalid start time format.");
 
         var endTime = startTime.Add(TimeSpan.FromMinutes(service.DurationMinutes));

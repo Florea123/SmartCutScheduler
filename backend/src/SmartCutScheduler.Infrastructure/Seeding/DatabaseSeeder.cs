@@ -24,7 +24,7 @@ public static class DatabaseSeeder
                 Id = Guid.NewGuid(),
                 Name = "Andrei Pop",
                 Email = "andrei.pop@demo.com",
-                PasswordHash = "demo", // setează parola hash reală dacă vrei autentificare
+                PasswordHash = "demo", // NOSONAR - demo seed data, not a real credential
                 Role = UserRole.Customer,
                 PhoneNumber = "+40740000001",
                 ProfilePictureUrl = demoProfilePic,
@@ -36,7 +36,7 @@ public static class DatabaseSeeder
                 Id = Guid.NewGuid(),
                 Name = "Maria Ionescu",
                 Email = "maria.ionescu@demo.com",
-                PasswordHash = "demo",
+                PasswordHash = "demo", // NOSONAR - demo seed data, not a real credential
                 Role = UserRole.Customer,
                 PhoneNumber = "+40740000002",
                 ProfilePictureUrl = demoProfilePic,
@@ -48,7 +48,7 @@ public static class DatabaseSeeder
                 Id = Guid.NewGuid(),
                 Name = "Vlad Admin",
                 Email = "admin@demo.com",
-                PasswordHash = "demo",
+                PasswordHash = "demo", // NOSONAR - demo seed data, not a real credential
                 Role = UserRole.Admin,
                 PhoneNumber = "+40740000003",
                 ProfilePictureUrl = demoProfilePic,

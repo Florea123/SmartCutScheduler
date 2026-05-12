@@ -1,6 +1,6 @@
 namespace SmartCutScheduler.Domain.Enums;
 
-public enum DayOfWeekEnum
+public enum DayOfWeekEnum // NOSONAR - renaming would conflict with System.DayOfWeek
 {
     Monday = 1,
     Tuesday = 2,
