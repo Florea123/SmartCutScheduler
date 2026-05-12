@@ -96,12 +96,22 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy(corsPolicy, policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:5173",
-                "http://localhost:5177", // Blazor WASM
-                "http://localhost:5000",
-                "http://localhost:3000"
-            )
+        // Default localhost origins for local development
+        var origins = new List<string>
+        {
+            "http://localhost:5173",
+            "http://localhost:5177",
+            "http://localhost:5000",
+            "http://localhost:3000"
+        };
+
+        // Allow additional origins from config (e.g. Azure Container Apps URL)
+        var extraOrigins = builder.Configuration
+            .GetSection("Cors:AllowedOrigins")
+            .Get<string[]>() ?? [];
+        origins.AddRange(extraOrigins);
+
+        policy.WithOrigins([.. origins])
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();

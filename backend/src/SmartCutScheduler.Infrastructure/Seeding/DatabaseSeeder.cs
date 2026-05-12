@@ -165,7 +165,7 @@ public static class DatabaseSeeder
         };
         // Seed Reviews (fiecare user lasă review la fiecare barber)
         var reviews = new List<Review>();
-        var random = new Random();
+        var random = Random.Shared;
         foreach (var user in users)
         {
             foreach (var barber in barbers)

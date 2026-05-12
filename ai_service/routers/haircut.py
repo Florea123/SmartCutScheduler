@@ -114,7 +114,7 @@ async def analyze_haircut(
                 detail=f"Could not fetch reference photo from backend: HTTP {exc.response.status_code}",
             ) from exc
         except Exception as exc:
-            logger.error("Failed to fetch reference photo: %s", exc)
+            logger.exception("Failed to fetch reference photo: %s", exc)
             raise HTTPException(
                 status_code=502,
                 detail="Could not retrieve the reference photo. Please try again.",
@@ -136,9 +136,12 @@ async def analyze_haircut(
             error_message=analysis.get("error_message"),
         )
 
-    needs_haircut: bool = bool(analysis.get("needs_haircut", False))
     confidence: float = float(analysis.get("confidence", 0.0))
     growth_level: str = str(analysis.get("hair_growth_level", "unknown"))
+    # Require confidence >= 0.60 before declaring a haircut is needed.
+    # Below this threshold the comparison is too ambiguous to act on.
+    _raw_needs_haircut: bool = bool(analysis.get("needs_haircut", False))
+    needs_haircut: bool = _raw_needs_haircut and confidence >= 0.60
     reason: str = str(analysis.get("reason", ""))
     raw_weeks = analysis.get("estimated_weeks_since_haircut")
     estimated_weeks: Optional[int] = None
