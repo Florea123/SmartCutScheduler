@@ -68,11 +68,10 @@ jobs:
 
       # ── Deploy Frontend to GitHub Pages ───────────────────────────────────
       - name: Deploy Frontend to GitHub Pages
-        uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d231e62369c1bc777 # v4.0.0
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: frontend/publish/wwwroot
-          cname: ""
 
       # ── Deploy API ─────────────────────────────────────────────────────────
       - name: Deploy API to Container Apps
