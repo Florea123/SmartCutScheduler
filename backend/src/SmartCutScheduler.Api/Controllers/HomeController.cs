@@ -7,6 +7,7 @@ namespace SmartCutScheduler.Api.Controllers
     public class HomeController : ControllerBase
     {
         [HttpGet]
+        [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
         public IActionResult Index()
         {
             return Ok("SmartCutScheduler API is running.");

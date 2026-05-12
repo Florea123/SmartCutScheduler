@@ -60,6 +60,9 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Add .NET 10 workload feed
+        run: dotnet nuget add source https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet10/nuget/v3/index.json --name dotnet10 || true
+
       - name: Restore WASM workloads
         run: dotnet workload restore frontend/SmartCutScheduler.Web/SmartCutScheduler.Web.csproj
 

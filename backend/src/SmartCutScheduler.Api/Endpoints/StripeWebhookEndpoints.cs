@@ -16,51 +16,9 @@ public static class StripeWebhookEndpoints
                 var json = await new StreamReader(request.Body).ReadToEndAsync();
                 var stripeEvent = EventUtility.ConstructEvent(json, request.Headers["Stripe-Signature"], config["Stripe:WebhookSecret"]);
 
-                // ...existing code...
                 if (stripeEvent.Type == "checkout.session.completed")
-                {
-                    var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
-                    if (session != null && session.Metadata != null)
-                    {
-                        var mediator = sp.GetRequiredService<MediatR.IMediator>();
-                        string? barberIdRaw = session.Metadata.ContainsKey("barberId") ? session.Metadata["barberId"] : null;
-                        string? serviceIdRaw = session.Metadata.ContainsKey("serviceId") ? session.Metadata["serviceId"] : null;
-                        string? dateRaw = session.Metadata.ContainsKey("date") ? session.Metadata["date"] : null;
-                        string? notesRaw = session.Metadata.ContainsKey("notes") ? session.Metadata["notes"] : null;
-                        string? userIdStr = session.Metadata.ContainsKey("userId") ? session.Metadata["userId"] : null;
+                    await HandleCheckoutCompletedAsync(sp, stripeEvent);
 
-                        Guid barberId, serviceId, userId;
-                        DateTime date;
-                        bool parseOk = true;
-                        if (!Guid.TryParse(barberIdRaw, out barberId)) { parseOk = false; }
-                        if (!Guid.TryParse(serviceIdRaw, out serviceId)) { parseOk = false; }
-                        if (!DateTime.TryParse(dateRaw, out date)) { parseOk = false; }
-                        if (!Guid.TryParse(userIdStr, out userId)) { parseOk = false; }
-
-                        if (parseOk)
-                        {
-                            var cmd = new CreateAppointmentCommand(
-                                barberId,
-                                serviceId,
-                                date.Date,
-                                date.TimeOfDay.ToString("hh\\:mm"),
-                                notesRaw
-                            );
-                            using (var scope = sp.CreateScope())
-                            {
-                                var httpContextAccessor = scope.ServiceProvider.GetRequiredService<IHttpContextAccessor>();
-                                var fakeContext = new DefaultHttpContext();
-                                var claims = new List<System.Security.Claims.Claim>
-                                {
-                                    new(System.Security.Claims.ClaimTypes.NameIdentifier, userId.ToString())
-                                };
-                                fakeContext.User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(claims, "StripeWebhook"));
-                                httpContextAccessor.HttpContext = fakeContext;
-                                await mediator.Send(cmd);
-                            }
-                        }
-                    }
-                }
                 return Results.Ok();
             }
             catch (Exception ex)
@@ -69,5 +27,49 @@ public static class StripeWebhookEndpoints
                 return Results.Problem(ex.ToString());
             }
         });
+    }
+
+    private static async Task HandleCheckoutCompletedAsync(IServiceProvider sp, Event stripeEvent)
+    {
+        var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
+        if (session?.Metadata == null)
+            return;
+
+        if (!TryParseSessionMetadata(session.Metadata, out var barberId, out var serviceId, out var userId, out var date, out var notesRaw))
+            return;
+
+        var cmd = new CreateAppointmentCommand(
+            barberId,
+            serviceId,
+            date.Date,
+            date.TimeOfDay.ToString("hh\\:mm"),
+            notesRaw
+        );
+
+        var mediator = sp.GetRequiredService<MediatR.IMediator>();
+        using var scope = sp.CreateScope();
+        var httpContextAccessor = scope.ServiceProvider.GetRequiredService<IHttpContextAccessor>();
+        var fakeContext = new DefaultHttpContext();
+        fakeContext.User = new System.Security.Claims.ClaimsPrincipal(
+            new System.Security.Claims.ClaimsIdentity(
+                [new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, userId.ToString())],
+                "StripeWebhook"));
+        httpContextAccessor.HttpContext = fakeContext;
+        await mediator.Send(cmd);
+    }
+
+    private static bool TryParseSessionMetadata(
+        IDictionary<string, string> metadata,
+        out Guid barberId, out Guid serviceId, out Guid userId,
+        out DateTime date, out string? notes)
+    {
+        barberId = serviceId = userId = Guid.Empty;
+        date = default;
+        notes = metadata.GetValueOrDefault("notes");
+
+        return Guid.TryParse(metadata.GetValueOrDefault("barberId"), out barberId)
+            && Guid.TryParse(metadata.GetValueOrDefault("serviceId"), out serviceId)
+            && Guid.TryParse(metadata.GetValueOrDefault("userId"), out userId)
+            && DateTime.TryParse(metadata.GetValueOrDefault("date"), System.Globalization.CultureInfo.InvariantCulture, out date);
     }
 }
