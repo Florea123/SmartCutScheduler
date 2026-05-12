@@ -66,13 +66,13 @@ jobs:
             -c Release \
             -o frontend/publish
 
-      # ── Deploy Frontend to Cloudflare Pages ───────────────────────────────
-      - name: Deploy Frontend to Cloudflare Pages
-        uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3.14.1
+      # ── Deploy Frontend to GitHub Pages ───────────────────────────────────
+      - name: Deploy Frontend to GitHub Pages
+        uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d231e62369c1bc777 # v4.0.0
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy frontend/publish/wwwroot --project-name=smartcut-frontend --branch=main
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: frontend/publish/wwwroot
+          cname: ""
 
       # ── Deploy API ─────────────────────────────────────────────────────────
       - name: Deploy API to Container Apps
