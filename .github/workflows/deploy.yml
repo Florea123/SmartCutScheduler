@@ -54,14 +54,28 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/smartcut-ai:${{ github.sha }},${{ env.REGISTRY }}/smartcut-ai:latest
 
-      # ── Build & push Frontend image ────────────────────────────────────────
-      - name: Build & push Frontend
-        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
+      # ── Publish Frontend (Blazor WASM static files) ──────────────────────
+      - name: Set up .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
-          context: ./frontend/SmartCutScheduler.Web
-          file: ./frontend/SmartCutScheduler.Web/Dockerfile
-          push: true
-          tags: ${{ env.REGISTRY }}/smartcut-frontend:${{ github.sha }},${{ env.REGISTRY }}/smartcut-frontend:latest
+          dotnet-version: '10.0.x'
+
+      - name: Publish Frontend
+        run: |
+          dotnet publish frontend/SmartCutScheduler.Web/SmartCutScheduler.Web.csproj \
+            -c Release \
+            -o frontend/publish
+
+      # ── Deploy Frontend to Azure Static Web Apps ───────────────────────────
+      - name: Deploy Frontend to Azure Static Web Apps
+        uses: azure/static-web-apps-deploy@1a947af9992250f3bc2e68ad0754c0b0c11566c9 # v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: frontend/publish/wwwroot
+          skip_app_build: true
+          skip_api_build: true
 
       # ── Deploy API ─────────────────────────────────────────────────────────
       - name: Deploy API to Container Apps
@@ -145,20 +159,4 @@ jobs:
           sys.exit(result.returncode)
           PYEOF
 
-      # ── Deploy Frontend ────────────────────────────────────────────────────
-      - name: Deploy Frontend to Container Apps
-        env:
-          IMAGE: ${{ env.REGISTRY }}/smartcut-frontend:${{ github.sha }}
-          RG: ${{ env.RESOURCE_GROUP }}
-        run: |
-          python3 - <<'PYEOF'
-          import subprocess, os, sys
-          cmd = [
-              "az", "containerapp", "update",
-              "--name", "smartcut-frontend",
-              "--resource-group", os.environ["RG"],
-              "--image", os.environ["IMAGE"],
-          ]
-          result = subprocess.run(cmd)
-          sys.exit(result.returncode)
-          PYEOF
+
