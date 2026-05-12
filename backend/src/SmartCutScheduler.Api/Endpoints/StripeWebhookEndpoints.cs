@@ -23,11 +23,11 @@ public static class StripeWebhookEndpoints
                     if (session != null && session.Metadata != null)
                     {
                         var mediator = sp.GetRequiredService<MediatR.IMediator>();
-                        string barberIdRaw = session.Metadata.ContainsKey("barberId") ? session.Metadata["barberId"] : null;
-                        string serviceIdRaw = session.Metadata.ContainsKey("serviceId") ? session.Metadata["serviceId"] : null;
-                        string dateRaw = session.Metadata.ContainsKey("date") ? session.Metadata["date"] : null;
-                        string notesRaw = session.Metadata.ContainsKey("notes") ? session.Metadata["notes"] : null;
-                        string userIdStr = session.Metadata.ContainsKey("userId") ? session.Metadata["userId"] : null;
+                        string? barberIdRaw = session.Metadata.ContainsKey("barberId") ? session.Metadata["barberId"] : null;
+                        string? serviceIdRaw = session.Metadata.ContainsKey("serviceId") ? session.Metadata["serviceId"] : null;
+                        string? dateRaw = session.Metadata.ContainsKey("date") ? session.Metadata["date"] : null;
+                        string? notesRaw = session.Metadata.ContainsKey("notes") ? session.Metadata["notes"] : null;
+                        string? userIdStr = session.Metadata.ContainsKey("userId") ? session.Metadata["userId"] : null;
 
                         Guid barberId, serviceId, userId;
                         DateTime date;
