@@ -32,16 +32,16 @@ public class UpdateUserProfileCommandHandler(
     private async Task UpdateBarberDataAsync(UpdateUserProfileCommand request, User user, CancellationToken cancellationToken)
     {
         var barber = await unitOfWork.Barbers.GetByIdAsync(user.Id, cancellationToken);
-        if (barber == null)
+        if (barber is null)
             return;
 
-        if (request.Description != null)
+        if (request.Description is not null)
         {
             barber.Description = request.Description;
             barber.UpdatedAtUtc = DateTime.UtcNow;
         }
 
-        if (request.ProfileImage != null)
+        if (request.ProfileImage is not null)
         {
             var imageUrl = await fileStorageService.SaveProfileImageAsync(user.Id, request.ProfileImage, cancellationToken);
             user.ProfilePictureUrl = imageUrl;

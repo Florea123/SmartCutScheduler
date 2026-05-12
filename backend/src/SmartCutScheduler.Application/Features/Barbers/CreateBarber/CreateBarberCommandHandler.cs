@@ -15,7 +15,7 @@ public class CreateBarberCommandHandler(
     {
         // Check if email already exists
         var existingUser = await unitOfWork.Users.GetByEmailAsync(request.Email, cancellationToken);
-        if (existingUser != null)
+        if (existingUser is not null)
         {
             throw new InvalidOperationException("Email-ul este deja folosit.");
         }

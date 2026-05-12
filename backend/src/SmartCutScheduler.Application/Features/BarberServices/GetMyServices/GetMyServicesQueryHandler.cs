@@ -11,7 +11,7 @@ public class GetMyServicesQueryHandler(IBarberRepository barberRepository)
     {
         var barber = await barberRepository.GetByIdAsync(request.BarberId, cancellationToken);
         
-        if (barber == null)
+        if (barber is null)
         {
             return Results.NotFound(new { message = "Frizer nu a fost găsit." });
         }

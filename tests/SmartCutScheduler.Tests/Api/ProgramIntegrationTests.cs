@@ -25,6 +25,13 @@ namespace SmartCutScheduler.Tests.Api
             Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Testing");
             _factory = factory.WithWebHostBuilder(builder =>
             {
+                builder.ConfigureAppConfiguration((ctx, cfg) =>
+                {
+                    cfg.AddInMemoryCollection(new System.Collections.Generic.Dictionary<string, string?>
+                    {
+                        ["Jwt:SigningKey"] = "TestSigningKeyForIntegrationTests1234567890!"
+                    });
+                });
                 builder.ConfigureServices(services =>
                 {
                     // Remove ALL registrations for AppDbContext and its options (compatibil universal)

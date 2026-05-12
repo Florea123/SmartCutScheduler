@@ -12,7 +12,10 @@ public static class PaymentEndpoints
 
         group.MapPost("/create-checkout-session", async (HttpContext ctx, [FromBody] CreateCheckoutSessionRequest req) =>
         {
-            StripeConfiguration.ApiKey = app.Configuration["Stripe:SecretKey"] ?? "sk_test_...";
+            var stripeKey = app.Configuration["Stripe:SecretKey"];
+            if (string.IsNullOrEmpty(stripeKey))
+                return Results.Problem("Payment service is not configured.");
+            StripeConfiguration.ApiKey = stripeKey;
 
             var userIdClaim = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             var userId = userIdClaim ?? string.Empty;

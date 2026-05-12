@@ -15,13 +15,13 @@ public class UpdateUserProfileCommandValidator : AbstractValidator<UpdateUserPro
         RuleFor(x => x.Description)
             .MaximumLength(500);
         RuleFor(x => x.ProfileImage)
-            .Must(BeAValidImage).When(x => x.ProfileImage != null)
+            .Must(BeAValidImage).When(x => x.ProfileImage is not null)
             .WithMessage("Fișierul trebuie să fie o imagine validă (jpg, jpeg, png) și max 2MB.");
     }
 
     private static bool BeAValidImage(IFormFile? file)
     {
-        if (file == null) return true;
+        if (file is null) return true;
         var allowed = new[] { ".jpg", ".jpeg", ".png" };
         var ext = System.IO.Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!allowed.Contains(ext)) return false;

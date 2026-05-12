@@ -11,7 +11,7 @@ public class CreateCustomServiceCommandHandler(IUnitOfWork unitOfWork)
     {
         // Verifică dacă frizerul există
         var barber = await unitOfWork.Barbers.GetByIdAsync(request.BarberId, cancellationToken);
-        if (barber == null)
+        if (barber is null)
         {
             throw new InvalidOperationException("Frizer nu a fost găsit.");
         }

@@ -9,13 +9,13 @@ public class RemoveServiceCommandHandler(IUnitOfWork unitOfWork)
     public async Task<bool> Handle(RemoveServiceCommand request, CancellationToken cancellationToken)
     {
         var barber = await unitOfWork.Barbers.GetByIdAsync(request.BarberId, cancellationToken);
-        if (barber == null)
+        if (barber is null)
         {
             throw new InvalidOperationException("Frizer nu a fost găsit.");
         }
 
         var barberService = barber.BarberServices.FirstOrDefault(bs => bs.ServiceId == request.ServiceId);
-        if (barberService == null)
+        if (barberService is null)
         {
             throw new InvalidOperationException("Serviciul nu a fost găsit.");
         }

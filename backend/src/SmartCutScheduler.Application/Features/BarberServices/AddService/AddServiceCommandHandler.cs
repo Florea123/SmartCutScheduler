@@ -11,14 +11,14 @@ public class AddServiceCommandHandler(IUnitOfWork unitOfWork)
     {
         // Verifică dacă frizerul există
         var barber = await unitOfWork.Barbers.GetByIdAsync(request.BarberId, cancellationToken);
-        if (barber == null)
+        if (barber is null)
         {
-            throw new InvalidOperationException("Frizer nu a fost găsit.");
+            throw new InvalidOperationException("Frizer nu a fost gÄsit.");
         }
 
-        // Verifică dacă serviciul există
+        // VerificÄ dacÄ serviciul existÄ
         var service = await unitOfWork.Services.GetByIdAsync(request.ServiceId, cancellationToken);
-        if (service == null)
+        if (service is null)
         {
             throw new InvalidOperationException("Serviciul nu a fost găsit.");
         }

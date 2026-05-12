@@ -18,7 +18,7 @@ public class RegisterCommandValidator : AbstractValidator<RegisterCommand>
             {
                 if (string.IsNullOrWhiteSpace(email)) return true;
                 var existing = await userRepository.GetByEmailAsync(email, ct);
-                return existing == null;
+                return existing is null;
             })
             .WithMessage("Email already registered.");
         
