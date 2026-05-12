@@ -249,7 +249,7 @@
                 {
                     // Persist recommendation in global AppState so other pages can access it
                     AppState.SetAiRecommendation(new AiRecommendationState(
-                        BarberId: result.recommended_slot.barberId,
+                        BarberId: Guid.Parse(result.recommended_slot.barberId),
                         BarberName: result.recommended_slot.barber,
                         SlotDate: result.recommended_slot.date,
                         SlotTime: result.recommended_slot.time,
