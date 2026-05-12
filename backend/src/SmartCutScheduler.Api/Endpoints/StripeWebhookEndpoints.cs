@@ -23,8 +23,9 @@ public static class StripeWebhookEndpoints
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Stripe webhook error: {ex}");
-                return Results.Problem(ex.ToString());
+                var logger = sp.GetService<ILoggerFactory>()?.CreateLogger("StripeWebhook");
+                logger?.LogError(ex, "Stripe webhook error");
+                return Results.Problem("An error occurred processing the webhook.");
             }
         });
     }
