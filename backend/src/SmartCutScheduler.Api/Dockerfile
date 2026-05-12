@@ -8,7 +8,7 @@ COPY ["SmartCutScheduler.Domain/SmartCutScheduler.Domain.csproj", "SmartCutSched
 COPY ["SmartCutScheduler.Infrastructure/SmartCutScheduler.Infrastructure.csproj", "SmartCutScheduler.Infrastructure/"]
 
 # Restore dependencies
-RUN dotnet restore "SmartCutScheduler.Api/SmartCutScheduler.Api.csproj"
+RUN dotnet restore "SmartCutScheduler.Api/SmartCutScheduler.Api.csproj" -p:NuGetAudit=false
 
 # Copy all source code (explicit directories to avoid exposing sensitive files)
 COPY SmartCutScheduler.Api/ SmartCutScheduler.Api/
@@ -18,7 +18,7 @@ COPY SmartCutScheduler.Infrastructure/ SmartCutScheduler.Infrastructure/
 
 # Build and publish
 WORKDIR "/src/SmartCutScheduler.Api"
-RUN dotnet publish -c Release -o /app/publish
+RUN dotnet publish -c Release -o /app/publish --no-restore -p:NuGetAudit=false
 
 # Build runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:10.0

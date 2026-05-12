@@ -213,10 +213,12 @@ class TestRecommendUsesNETApiData:
 
         assert response.status_code == 422
 
-    async def test_recommend_returns_400_when_slots_empty(self, async_client):
+    async def test_recommend_returns_422_when_slots_empty(self, async_client):
+        # availableSlots has min_length=1 in the schema, so Pydantic raises
+        # a validation error (422) before the router even runs.
         payload = {**BASE_PAYLOAD, "availableSlots": []}
         response = await async_client.post("/recommend", json=payload)
-        assert response.status_code == 400
+        assert response.status_code == 422
 
     async def test_recommend_response_includes_score_breakdown(self, async_client):
         top_3 = [make_scored_slot("Alex Popa", 10, 91.5)]
