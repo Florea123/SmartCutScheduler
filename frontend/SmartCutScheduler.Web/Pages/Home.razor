@@ -2,12 +2,14 @@
 @using MudBlazor
 @using MudBlazor.Services
 @using Microsoft.Extensions.Http
+@using SmartCutScheduler.Web.State
 @inject IBarberService BarberService
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
 @inject IAuthService AuthService
 @inject IHttpClientFactory HttpClientFactory
 @inject NotificationService NotificationService
+@inject AppState AppState
 @inject ISnackbar Snackbar
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-10 mb-10">
@@ -245,6 +247,15 @@
                 var result = await response.Content.ReadFromJsonAsync<AiRecommendResponse>();
                 if (result != null)
                 {
+                    // Persist recommendation in global AppState so other pages can access it
+                    AppState.SetAiRecommendation(new AiRecommendationState(
+                        BarberId: result.recommended_slot.barberId,
+                        BarberName: result.recommended_slot.barber,
+                        SlotDate: result.recommended_slot.date,
+                        SlotTime: result.recommended_slot.time,
+                        Score: result.score_breakdown.total,
+                        Reason: result.reason));
+
                     var notification = new AiNotification
                     {
                         BarberName = result.recommended_slot.barber,
@@ -257,6 +268,7 @@
                         IsRead = false
                     };
                     await NotificationService.AddAsync(notification);
+                    AppState.IncrementUnreadCount();
                     Snackbar.Add($"Recomandare AI: {result.recommended_slot.barber} la {result.recommended_slot.time.Substring(0, 5)} ({result.score_breakdown.total:0.0}/100)", Severity.Success);
                 }
             }
