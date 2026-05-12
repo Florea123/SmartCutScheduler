@@ -72,34 +72,45 @@ jobs:
           REG_SERVER: ${{ secrets.REGISTRY_LOGIN_SERVER }}
           REG_USER: ${{ secrets.REGISTRY_USERNAME }}
           REG_PASS: ${{ secrets.REGISTRY_PASSWORD }}
+          IMAGE: ${{ env.REGISTRY }}/smartcut-api:${{ github.sha }}
+          RG: ${{ env.RESOURCE_GROUP }}
         run: |
-          az containerapp update \
-            --name smartcut-api \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --image ${{ env.REGISTRY }}/smartcut-api:${{ github.sha }} \
-            --registry-server "$REG_SERVER" \
-            --registry-username "$REG_USER" \
-            --registry-password "$REG_PASS" \
-            --set-env-vars \
-              "ASPNETCORE_ENVIRONMENT=Production" \
-              "ConnectionStrings__DefaultConnection=$DB_CONN" \
-              "Jwt__SigningKey=$JWT_KEY" \
-              "Jwt__Issuer=SmartCutScheduler" \
-              "Jwt__Audience=SmartCutSchedulerClient" \
-              "Jwt__AccessTokenMinutes=15" \
-              "Jwt__RefreshTokenDays=7" \
-              "SeedAdmin__Password=$SEED_PWD" \
-              "SeedAdmin__Email=admin@smartcut.com" \
-              "SeedAdmin__Name=Admin" \
-              "Stripe__SecretKey=$STRIPE_KEY" \
-              "Stripe__WebhookSecret=$STRIPE_WH" \
-              "Stripe__SuccessUrl=$FRONTEND/" \
-              "Stripe__CancelUrl=$FRONTEND/" \
-              "AzureStorage__ConnectionString=$STORAGE_CONN" \
-              "AzureStorage__ProfileImagesContainer=profile-images" \
-              "AzureStorage__FreshHaircutPhotosContainer=fresh-haircut-photos" \
-              "Cors__AllowedOrigins__0=$FRONTEND" \
-              "NPGSQL_ENABLE_LEGACY_TIMESTAMP_BEHAVIOR=true"
+          python3 - <<'PYEOF'
+          import subprocess, os, sys
+          env_vars = [
+              "ASPNETCORE_ENVIRONMENT=Production",
+              "ConnectionStrings__DefaultConnection=" + os.environ["DB_CONN"],
+              "Jwt__SigningKey=" + os.environ["JWT_KEY"],
+              "Jwt__Issuer=SmartCutScheduler",
+              "Jwt__Audience=SmartCutSchedulerClient",
+              "Jwt__AccessTokenMinutes=15",
+              "Jwt__RefreshTokenDays=7",
+              "SeedAdmin__Password=" + os.environ["SEED_PWD"],
+              "SeedAdmin__Email=admin@smartcut.com",
+              "SeedAdmin__Name=Admin",
+              "Stripe__SecretKey=" + os.environ["STRIPE_KEY"],
+              "Stripe__WebhookSecret=" + os.environ["STRIPE_WH"],
+              "Stripe__SuccessUrl=" + os.environ["FRONTEND"] + "/",
+              "Stripe__CancelUrl=" + os.environ["FRONTEND"] + "/",
+              "AzureStorage__ConnectionString=" + os.environ["STORAGE_CONN"],
+              "AzureStorage__ProfileImagesContainer=profile-images",
+              "AzureStorage__FreshHaircutPhotosContainer=fresh-haircut-photos",
+              "Cors__AllowedOrigins__0=" + os.environ["FRONTEND"],
+              "NPGSQL_ENABLE_LEGACY_TIMESTAMP_BEHAVIOR=true",
+          ]
+          cmd = [
+              "az", "containerapp", "update",
+              "--name", "smartcut-api",
+              "--resource-group", os.environ["RG"],
+              "--image", os.environ["IMAGE"],
+              "--registry-server", os.environ["REG_SERVER"],
+              "--registry-username", os.environ["REG_USER"],
+              "--registry-password", os.environ["REG_PASS"],
+              "--set-env-vars", *env_vars,
+          ]
+          result = subprocess.run(cmd)
+          sys.exit(result.returncode)
+          PYEOF
 
       # ── Deploy AI Service ──────────────────────────────────────────────────
       - name: Deploy AI Service to Container Apps
@@ -109,27 +120,38 @@ jobs:
           WEATHER_KEY: ${{ secrets.WEATHER_API_KEY }}
           G_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           G_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          AI_URL: ${{ secrets.AI_URL }}
+          AI_SVC_URL: ${{ secrets.AI_URL }}
           FRONTEND: ${{ secrets.FRONTEND_URL }}
           REG_SERVER: ${{ secrets.REGISTRY_LOGIN_SERVER }}
           REG_USER: ${{ secrets.REGISTRY_USERNAME }}
           REG_PASS: ${{ secrets.REGISTRY_PASSWORD }}
+          IMAGE: ${{ env.REGISTRY }}/smartcut-ai:${{ github.sha }}
+          RG: ${{ env.RESOURCE_GROUP }}
         run: |
-          az containerapp update \
-            --name smartcut-ai \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --image ${{ env.REGISTRY }}/smartcut-ai:${{ github.sha }} \
-            --registry-server "$REG_SERVER" \
-            --registry-username "$REG_USER" \
-            --registry-password "$REG_PASS" \
-            --set-env-vars \
-              "DOTNET_API_URL=$API_URL" \
-              "GEMINI_API_KEY=$GEMINI_KEY" \
-              "WEATHER_API_KEY=$WEATHER_KEY" \
-              "GOOGLE_CLIENT_ID=$G_CLIENT_ID" \
-              "GOOGLE_CLIENT_SECRET=$G_CLIENT_SECRET" \
-              "GOOGLE_REDIRECT_URI=$AI_URL/calendar/callback" \
-              "CORS_ORIGINS=$FRONTEND"
+          python3 - <<'PYEOF'
+          import subprocess, os, sys
+          env_vars = [
+              "DOTNET_API_URL=" + os.environ["API_URL"],
+              "GEMINI_API_KEY=" + os.environ["GEMINI_KEY"],
+              "WEATHER_API_KEY=" + os.environ["WEATHER_KEY"],
+              "GOOGLE_CLIENT_ID=" + os.environ["G_CLIENT_ID"],
+              "GOOGLE_CLIENT_SECRET=" + os.environ["G_CLIENT_SECRET"],
+              "GOOGLE_REDIRECT_URI=" + os.environ["AI_SVC_URL"] + "/calendar/callback",
+              "CORS_ORIGINS=" + os.environ["FRONTEND"],
+          ]
+          cmd = [
+              "az", "containerapp", "update",
+              "--name", "smartcut-ai",
+              "--resource-group", os.environ["RG"],
+              "--image", os.environ["IMAGE"],
+              "--registry-server", os.environ["REG_SERVER"],
+              "--registry-username", os.environ["REG_USER"],
+              "--registry-password", os.environ["REG_PASS"],
+              "--set-env-vars", *env_vars,
+          ]
+          result = subprocess.run(cmd)
+          sys.exit(result.returncode)
+          PYEOF
 
       # ── Deploy Frontend ────────────────────────────────────────────────────
       - name: Deploy Frontend to Container Apps
@@ -137,11 +159,20 @@ jobs:
           REG_SERVER: ${{ secrets.REGISTRY_LOGIN_SERVER }}
           REG_USER: ${{ secrets.REGISTRY_USERNAME }}
           REG_PASS: ${{ secrets.REGISTRY_PASSWORD }}
+          IMAGE: ${{ env.REGISTRY }}/smartcut-frontend:${{ github.sha }}
+          RG: ${{ env.RESOURCE_GROUP }}
         run: |
-          az containerapp update \
-            --name smartcut-frontend \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --image ${{ env.REGISTRY }}/smartcut-frontend:${{ github.sha }} \
-            --registry-server "$REG_SERVER" \
-            --registry-username "$REG_USER" \
-            --registry-password "$REG_PASS"
+          python3 - <<'PYEOF'
+          import subprocess, os, sys
+          cmd = [
+              "az", "containerapp", "update",
+              "--name", "smartcut-frontend",
+              "--resource-group", os.environ["RG"],
+              "--image", os.environ["IMAGE"],
+              "--registry-server", os.environ["REG_SERVER"],
+              "--registry-username", os.environ["REG_USER"],
+              "--registry-password", os.environ["REG_PASS"],
+          ]
+          result = subprocess.run(cmd)
+          sys.exit(result.returncode)
+          PYEOF
