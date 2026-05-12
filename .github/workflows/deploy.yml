@@ -1,0 +1,121 @@
+name: Deploy to Azure Container Apps
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+  RESOURCE_GROUP: smartcut-rg
+  CONTAINER_APPS_ENV: smartcut-env
+
+jobs:
+  build-and-deploy:
+    name: Build, Push & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Login to Azure ────────────────────────────────────────────────────
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # ── Login to Azure Container Registry ─────────────────────────────────
+      - name: Log in to ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      # ── Build & push API image ─────────────────────────────────────────────
+      - name: Build & push API
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend/src
+          file: ./backend/src/SmartCutScheduler.Api/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/smartcut-api:${{ github.sha }},${{ env.REGISTRY }}/smartcut-api:latest
+
+      # ── Build & push AI service image ─────────────────────────────────────
+      - name: Build & push AI Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ai_service
+          file: ./ai_service/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/smartcut-ai:${{ github.sha }},${{ env.REGISTRY }}/smartcut-ai:latest
+
+      # ── Build & push Frontend image ────────────────────────────────────────
+      - name: Build & push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend/SmartCutScheduler.Web
+          file: ./frontend/SmartCutScheduler.Web/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/smartcut-frontend:${{ github.sha }},${{ env.REGISTRY }}/smartcut-frontend:latest
+
+      # ── Deploy API ─────────────────────────────────────────────────────────
+      - name: Deploy API to Container Apps
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          resourceGroup: ${{ env.RESOURCE_GROUP }}
+          containerAppName: smartcut-api
+          imageToDeploy: ${{ env.REGISTRY }}/smartcut-api:${{ github.sha }}
+          registryUrl: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          registryUsername: ${{ secrets.REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.REGISTRY_PASSWORD }}
+          environmentVariables: |
+            ASPNETCORE_ENVIRONMENT=Production
+            ConnectionStrings__DefaultConnection=${{ secrets.DB_CONNECTION_STRING }}
+            Jwt__SigningKey=${{ secrets.JWT_SIGNING_KEY }}
+            Jwt__Issuer=SmartCutScheduler
+            Jwt__Audience=SmartCutSchedulerClient
+            Jwt__AccessTokenMinutes=15
+            Jwt__RefreshTokenDays=7
+            SeedAdmin__Password=${{ secrets.SEED_ADMIN_PASSWORD }}
+            SeedAdmin__Email=admin@smartcut.com
+            SeedAdmin__Name=Admin
+            Stripe__SecretKey=${{ secrets.STRIPE_SECRET_KEY }}
+            Stripe__WebhookSecret=${{ secrets.STRIPE_WEBHOOK_SECRET }}
+            Stripe__SuccessUrl=${{ secrets.FRONTEND_URL }}/
+            Stripe__CancelUrl=${{ secrets.FRONTEND_URL }}/
+            AzureStorage__ConnectionString=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+            AzureStorage__ProfileImagesContainer=profile-images
+            AzureStorage__FreshHaircutPhotosContainer=fresh-haircut-photos
+            Cors__AllowedOrigins__0=${{ secrets.FRONTEND_URL }}
+            NPGSQL_ENABLE_LEGACY_TIMESTAMP_BEHAVIOR=true
+
+      # ── Deploy AI Service ──────────────────────────────────────────────────
+      - name: Deploy AI Service to Container Apps
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          resourceGroup: ${{ env.RESOURCE_GROUP }}
+          containerAppName: smartcut-ai
+          imageToDeploy: ${{ env.REGISTRY }}/smartcut-ai:${{ github.sha }}
+          registryUrl: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          registryUsername: ${{ secrets.REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.REGISTRY_PASSWORD }}
+          environmentVariables: |
+            DOTNET_API_URL=${{ secrets.API_URL }}
+            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+            WEATHER_API_KEY=${{ secrets.WEATHER_API_KEY }}
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            GOOGLE_REDIRECT_URI=${{ secrets.AI_URL }}/calendar/callback
+            CORS_ORIGINS=${{ secrets.FRONTEND_URL }}
+
+      # ── Deploy Frontend ────────────────────────────────────────────────────
+      - name: Deploy Frontend to Container Apps
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          resourceGroup: ${{ env.RESOURCE_GROUP }}
+          containerAppName: smartcut-frontend
+          imageToDeploy: ${{ env.REGISTRY }}/smartcut-frontend:${{ github.sha }}
+          registryUrl: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          registryUsername: ${{ secrets.REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.REGISTRY_PASSWORD }}

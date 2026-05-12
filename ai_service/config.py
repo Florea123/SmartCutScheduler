@@ -52,5 +52,13 @@ class Settings(BaseSettings):
         "http://localhost:5173",
     ]
 
+    @property
+    def all_cors_origins(self) -> list[str]:
+        """Merges default cors_origins with any extra origin from CORS_ORIGINS env var."""
+        import os
+        extra = os.getenv("CORS_ORIGINS", "")
+        extras = [o.strip() for o in extra.split(",") if o.strip()]
+        return list(dict.fromkeys(self.cors_origins + extras))
+
 
 settings = Settings()

@@ -7,6 +7,7 @@ The analysis is fully vision-based — no measurements, only visual comparison.
 """
 
 import asyncio
+import hashlib
 import json
 import logging
 import urllib.parse
@@ -35,6 +36,21 @@ You will be shown exactly TWO photos:
   1. REFERENCE photo — taken RIGHT AFTER a fresh haircut. This is the ZERO point.
      Whatever hair length you see here means growth = 0.
   2. CURRENT photo   — taken today. Compare against REFERENCE to detect growth.
+
+══════════════════════════════════════════════════════
+CRITICAL RULE — IDENTICAL OR NEAR-IDENTICAL PHOTOS
+══════════════════════════════════════════════════════
+If the two photos appear to be the SAME photo or are visually indistinguishable
+(same background, same lighting, same pose, same clothing, no visible differences),
+you MUST return immediately with:
+{
+  "needs_haircut": false,
+  "confidence": 1.0,
+  "hair_growth_level": "none",
+  "reason": "Ambele poze par să fie identice sau extrem de similare. Nu s-a detectat nicio diferență de creștere a părului.",
+  "estimated_weeks_since_haircut": null
+}
+Do NOT try to find subtle differences. If you cannot tell them apart, they are the same.
 
 ══════════════════════════════════════════════════════
 STEP 1 — VALIDATION (check this FIRST, before any analysis)
@@ -125,16 +141,20 @@ STEP 3C — Compare using ONLY angle-reliable signals from Step 2:
 STEP 3D — Assign growth level based ONLY on reliable evidence:
   "none"        → No reliable visual difference.
   "minimal"     → Barely perceptible growth from ONE reliable signal only.
-  "moderate"    → Clearly visible growth from at least ONE reliable signal.
-                  Must be something that cannot be explained by angle difference.
+  "moderate"    → Clearly visible growth from at least TWO independent reliable
+                  signals. A single signal is NOT enough — it could still be
+                  lighting, compression, or a subtle angle difference.
   "significant" → Noticeably longer overall from multiple reliable signals.
   "excessive"   → Dramatically longer, obvious even across different angles.
   "unknown"     → Cannot make ANY reliable comparison (both photos too blurry/incomplete).
 
 STEP 3E — Final values:
-  - "needs_haircut": true when growth_level is "moderate", "significant", or "excessive".
-  - "confidence": (0.0–1.0). Reduce by 0.1–0.2 for each comparison region that is
-      UNRELIABLE due to angle. If ALL compared regions are unreliable, confidence < 0.4.
+  - "needs_haircut": true ONLY when growth_level is "moderate", "significant", or "excessive"
+      AND you are genuinely certain. When in doubt, default to FALSE.
+      If you are not sure, pick false — a false negative is far less harmful than a false positive.
+  - "confidence": (0.0–1.0). Start at 1.0 and reduce by 0.15 for each comparison region
+      that is UNRELIABLE due to angle. If ALL compared regions are unreliable, confidence < 0.4.
+      If the photos look very similar overall, confidence should be ≤ 0.50.
   - "estimated_weeks_since_haircut": a SINGLE INTEGER or null.
       none/minimal  → null
       moderate      → integer between 3 and 5 (e.g. 4)
@@ -219,6 +239,17 @@ async def analyze_hair(
         reason, estimated_weeks_since_haircut
     Falls back gracefully when Gemini is unavailable.
     """
+    # Fast path: if both images are byte-for-byte identical, skip Gemini entirely
+    if hashlib.sha256(reference_bytes).digest() == hashlib.sha256(current_bytes).digest():
+        logger.info("Reference and current photos are identical — skipping Gemini call")
+        return {
+            "needs_haircut": False,
+            "confidence": 1.0,
+            "hair_growth_level": "none",
+            "reason": "Ambele poze sunt identice. Nu s-a detectat nicio creștere a părului.",
+            "estimated_weeks_since_haircut": None,
+        }
+
     if not settings.gemini_api_key:
         logger.info("Gemini API key not set — skipping hair analysis")
         return _fallback_response("Gemini API key not configured — analysis skipped.")
