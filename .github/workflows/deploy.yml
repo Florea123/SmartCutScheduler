@@ -9,6 +9,7 @@ env:
   REGISTRY: ${{ secrets.REGISTRY_LOGIN_SERVER }}
   RESOURCE_GROUP: smartcut-rg
   CONTAINER_APPS_ENV: smartcut-env
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build-and-deploy:

@@ -65,11 +65,16 @@ public static class StripeWebhookEndpoints
     {
         barberId = serviceId = userId = Guid.Empty;
         date = default;
-        notes = metadata.GetValueOrDefault("notes");
+        metadata.TryGetValue("notes", out notes);
 
-        return Guid.TryParse(metadata.GetValueOrDefault("barberId"), out barberId)
-            && Guid.TryParse(metadata.GetValueOrDefault("serviceId"), out serviceId)
-            && Guid.TryParse(metadata.GetValueOrDefault("userId"), out userId)
-            && DateTime.TryParse(metadata.GetValueOrDefault("date"), System.Globalization.CultureInfo.InvariantCulture, out date);
+        metadata.TryGetValue("barberId", out var barberIdRaw);
+        metadata.TryGetValue("serviceId", out var serviceIdRaw);
+        metadata.TryGetValue("userId", out var userIdRaw);
+        metadata.TryGetValue("date", out var dateRaw);
+
+        return Guid.TryParse(barberIdRaw, out barberId)
+            && Guid.TryParse(serviceIdRaw, out serviceId)
+            && Guid.TryParse(userIdRaw, out userId)
+            && DateTime.TryParse(dateRaw, System.Globalization.CultureInfo.InvariantCulture, out date);
     }
 }
