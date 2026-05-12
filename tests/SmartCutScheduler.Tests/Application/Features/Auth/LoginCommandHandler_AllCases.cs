@@ -19,7 +19,7 @@ public class LoginCommandHandler_AllCases
         var passwordServiceMock = new Mock<IPasswordService>();
         var jwtTokenServiceMock = new Mock<IJwtTokenService>();
         var httpContextAccessorMock = new Mock<IHttpContextAccessor>();
-        unitOfWorkMock.Setup(u => u.Users.GetByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((User)null);
+        unitOfWorkMock.Setup(u => u.Users.GetByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
         var handler = new LoginCommandHandler(unitOfWorkMock.Object, passwordServiceMock.Object, jwtTokenServiceMock.Object, httpContextAccessorMock.Object);
         var command = new LoginCommand("test@test.com", "pass");
         var result = await handler.Handle(command, CancellationToken.None);

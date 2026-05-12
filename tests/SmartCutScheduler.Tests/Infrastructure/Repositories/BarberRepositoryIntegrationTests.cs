@@ -1,3 +1,4 @@
+using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using SmartCutScheduler.Domain.Entities;
 using SmartCutScheduler.Infrastructure.Persistence;

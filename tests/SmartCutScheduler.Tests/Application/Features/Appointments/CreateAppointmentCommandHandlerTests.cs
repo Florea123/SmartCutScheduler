@@ -19,7 +19,7 @@ public class CreateAppointmentCommandHandlerTests
         // Arrange
         var unitOfWorkMock = new Mock<IUnitOfWork>();
         var httpContextAccessorMock = new Mock<IHttpContextAccessor>();
-        httpContextAccessorMock.Setup(x => x.HttpContext).Returns((HttpContext)null);
+        httpContextAccessorMock.Setup(x => x.HttpContext).Returns((HttpContext?)null);
         var handler = new CreateAppointmentCommandHandler(unitOfWorkMock.Object, httpContextAccessorMock.Object);
         var command = new CreateAppointmentCommand(Guid.NewGuid(), Guid.NewGuid(), DateTime.Today, "10:00", null);
 

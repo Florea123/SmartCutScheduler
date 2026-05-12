@@ -15,7 +15,7 @@ public class AddServiceCommandHandler_AllCases
     public async Task Handle_ShouldThrow_WhenBarberNotFound()
     {
         var unitOfWorkMock = new Mock<IUnitOfWork>();
-        unitOfWorkMock.Setup(u => u.Barbers.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Barber)null);
+        unitOfWorkMock.Setup(u => u.Barbers.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Barber?)null);
         var handler = new AddServiceCommandHandler(unitOfWorkMock.Object);
         var command = new AddServiceCommand(Guid.NewGuid(), Guid.NewGuid(), null);
         await Assert.ThrowsAsync<InvalidOperationException>(() => handler.Handle(command, CancellationToken.None));

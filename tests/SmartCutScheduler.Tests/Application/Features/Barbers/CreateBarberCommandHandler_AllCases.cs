@@ -27,7 +27,7 @@ public class CreateBarberCommandHandler_AllCases
     public async Task Handle_ShouldCreateBarber_WhenValid()
     {
         var unitOfWorkMock = new Mock<IUnitOfWork>();
-        unitOfWorkMock.Setup(u => u.Users.GetByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((User)null);
+        unitOfWorkMock.Setup(u => u.Users.GetByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
         unitOfWorkMock.Setup(u => u.Users.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         unitOfWorkMock.Setup(u => u.Barbers.AddAsync(It.IsAny<Barber>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         unitOfWorkMock.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);

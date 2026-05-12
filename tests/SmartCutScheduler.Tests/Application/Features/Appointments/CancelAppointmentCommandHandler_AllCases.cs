@@ -19,7 +19,7 @@ public class CancelAppointmentCommandHandler_AllCases
         var appointmentRepoMock = new Mock<IAppointmentRepository>();
         var unitOfWorkMock = new Mock<IUnitOfWork>();
         var httpContextAccessorMock = new Mock<IHttpContextAccessor>();
-        httpContextAccessorMock.Setup(x => x.HttpContext).Returns((HttpContext)null);
+        httpContextAccessorMock.Setup(x => x.HttpContext).Returns((HttpContext?)null);
         var handler = new CancelAppointmentCommandHandler(appointmentRepoMock.Object, unitOfWorkMock.Object, httpContextAccessorMock.Object);
         var command = new CancelAppointmentCommand(Guid.NewGuid());
         var result = await handler.Handle(command, CancellationToken.None);
@@ -30,7 +30,7 @@ public class CancelAppointmentCommandHandler_AllCases
     public async Task Handle_ShouldReturnNotFound_WhenAppointmentNotFoundOrNotOwned()
     {
         var appointmentRepoMock = new Mock<IAppointmentRepository>();
-        appointmentRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Appointment)null);
+        appointmentRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Appointment?)null);
         var unitOfWorkMock = new Mock<IUnitOfWork>();
         var httpContext = new DefaultHttpContext();
         var userId = Guid.NewGuid();

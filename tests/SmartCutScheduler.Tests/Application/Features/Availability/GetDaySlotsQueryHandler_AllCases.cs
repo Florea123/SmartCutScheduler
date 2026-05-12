@@ -16,7 +16,7 @@ public class GetDaySlotsQueryHandler_AllCases
     public async Task Handle_ShouldReturnNotFound_WhenBarberNotFoundOrInactive()
     {
         var barberRepoMock = new Mock<IBarberRepository>();
-        barberRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Barber)null);
+        barberRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Barber?)null);
         var appointmentRepoMock = new Mock<IAppointmentRepository>();
         var handler = new GetDaySlotsQueryHandler(barberRepoMock.Object, appointmentRepoMock.Object);
         var query = new GetDaySlotsQuery(Guid.NewGuid(), DateTime.Today);

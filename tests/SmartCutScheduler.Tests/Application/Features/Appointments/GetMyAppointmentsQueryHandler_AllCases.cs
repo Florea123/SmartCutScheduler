@@ -19,7 +19,7 @@ public class GetMyAppointmentsQueryHandler_AllCases
     {
         var appointmentRepoMock = new Mock<IAppointmentRepository>();
         var httpContextAccessorMock = new Mock<IHttpContextAccessor>();
-        httpContextAccessorMock.Setup(x => x.HttpContext).Returns((HttpContext)null);
+        httpContextAccessorMock.Setup(x => x.HttpContext).Returns((HttpContext?)null);
         var handler = new GetMyAppointmentsQueryHandler(appointmentRepoMock.Object, httpContextAccessorMock.Object);
         var query = new GetMyAppointmentsQuery();
         var result = await handler.Handle(query, CancellationToken.None);

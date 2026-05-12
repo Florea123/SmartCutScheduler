@@ -16,7 +16,7 @@ public class GetAvailableSlotsQueryHandler_AllCases
     public async Task Handle_ShouldReturnNotFound_WhenBarberNotFoundOrInactive()
     {
         var barberRepoMock = new Mock<IBarberRepository>();
-        barberRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Barber)null);
+        barberRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Barber?)null);
         var serviceRepoMock = new Mock<IServiceRepository>();
         var appointmentRepoMock = new Mock<IAppointmentRepository>();
         var handler = new GetAvailableSlotsQueryHandler(barberRepoMock.Object, serviceRepoMock.Object, appointmentRepoMock.Object);

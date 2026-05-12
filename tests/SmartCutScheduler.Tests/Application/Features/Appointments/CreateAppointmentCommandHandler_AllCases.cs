@@ -18,7 +18,7 @@ public class CreateAppointmentCommandHandler_AllCases
     {
         var unitOfWorkMock = new Mock<IUnitOfWork>();
         var httpContextAccessorMock = new Mock<IHttpContextAccessor>();
-        httpContextAccessorMock.Setup(x => x.HttpContext).Returns((HttpContext)null);
+        httpContextAccessorMock.Setup(x => x.HttpContext).Returns((HttpContext?)null);
         var handler = new CreateAppointmentCommandHandler(unitOfWorkMock.Object, httpContextAccessorMock.Object);
         var command = new CreateAppointmentCommand(Guid.NewGuid(), Guid.NewGuid(), DateTime.Today, "10:00", null);
         var result = await handler.Handle(command, CancellationToken.None);
@@ -43,7 +43,7 @@ public class CreateAppointmentCommandHandler_AllCases
     public async Task Handle_ShouldReturnNotFound_WhenBarberNotFound()
     {
         var unitOfWorkMock = new Mock<IUnitOfWork>();
-        unitOfWorkMock.Setup(u => u.Barbers.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Barber)null);
+        unitOfWorkMock.Setup(u => u.Barbers.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Barber?)null);
         var httpContext = new DefaultHttpContext();
         httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()) }, "mock"));
         var httpContextAccessorMock = new Mock<IHttpContextAccessor>();

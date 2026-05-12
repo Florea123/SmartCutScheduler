@@ -15,7 +15,7 @@ public class UpdateUserProfileCommandHandler_AllCases
     public async Task Handle_ShouldThrow_WhenUserNotFound()
     {
         var unitOfWorkMock = new Mock<IUnitOfWork>();
-        unitOfWorkMock.Setup(u => u.Users.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((User)null);
+        unitOfWorkMock.Setup(u => u.Users.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
         var fileStorageServiceMock = new Mock<IFileStorageService>();
         var handler = new UpdateUserProfileCommandHandler(unitOfWorkMock.Object, fileStorageServiceMock.Object);
         var command = new UpdateUserProfileCommand { UserId = Guid.NewGuid() };
