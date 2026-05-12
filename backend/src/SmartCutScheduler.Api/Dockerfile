@@ -29,7 +29,7 @@ COPY --from=build /app/publish .
 ENV ASPNETCORE_URLS=http://+:5000
 EXPOSE 5000
 
-RUN addgroup --system appuser && adduser --system --ingroup appuser appuser
-USER appuser
+# Use built-in non-root user included in .NET 8+ images
+USER app
 
 ENTRYPOINT ["dotnet", "SmartCutScheduler.Api.dll"]
