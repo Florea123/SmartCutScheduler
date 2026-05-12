@@ -73,9 +73,6 @@ jobs:
           STRIPE_WH: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           FRONTEND: ${{ secrets.FRONTEND_URL }}
           STORAGE_CONN: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-          REG_SERVER: ${{ secrets.REGISTRY_LOGIN_SERVER }}
-          REG_USER: ${{ secrets.REGISTRY_USERNAME }}
-          REG_PASS: ${{ secrets.REGISTRY_PASSWORD }}
           IMAGE: ${{ env.REGISTRY }}/smartcut-api:${{ github.sha }}
           RG: ${{ env.RESOURCE_GROUP }}
         run: |
@@ -107,9 +104,6 @@ jobs:
               "--name", "smartcut-api",
               "--resource-group", os.environ["RG"],
               "--image", os.environ["IMAGE"],
-              "--registry-server", os.environ["REG_SERVER"],
-              "--registry-username", os.environ["REG_USER"],
-              "--registry-password", os.environ["REG_PASS"],
               "--set-env-vars", *env_vars,
           ]
           result = subprocess.run(cmd)
@@ -126,9 +120,6 @@ jobs:
           G_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           AI_SVC_URL: ${{ secrets.AI_URL }}
           FRONTEND: ${{ secrets.FRONTEND_URL }}
-          REG_SERVER: ${{ secrets.REGISTRY_LOGIN_SERVER }}
-          REG_USER: ${{ secrets.REGISTRY_USERNAME }}
-          REG_PASS: ${{ secrets.REGISTRY_PASSWORD }}
           IMAGE: ${{ env.REGISTRY }}/smartcut-ai:${{ github.sha }}
           RG: ${{ env.RESOURCE_GROUP }}
         run: |
@@ -148,9 +139,6 @@ jobs:
               "--name", "smartcut-ai",
               "--resource-group", os.environ["RG"],
               "--image", os.environ["IMAGE"],
-              "--registry-server", os.environ["REG_SERVER"],
-              "--registry-username", os.environ["REG_USER"],
-              "--registry-password", os.environ["REG_PASS"],
               "--set-env-vars", *env_vars,
           ]
           result = subprocess.run(cmd)
@@ -160,9 +148,6 @@ jobs:
       # ── Deploy Frontend ────────────────────────────────────────────────────
       - name: Deploy Frontend to Container Apps
         env:
-          REG_SERVER: ${{ secrets.REGISTRY_LOGIN_SERVER }}
-          REG_USER: ${{ secrets.REGISTRY_USERNAME }}
-          REG_PASS: ${{ secrets.REGISTRY_PASSWORD }}
           IMAGE: ${{ env.REGISTRY }}/smartcut-frontend:${{ github.sha }}
           RG: ${{ env.RESOURCE_GROUP }}
         run: |
@@ -173,9 +158,6 @@ jobs:
               "--name", "smartcut-frontend",
               "--resource-group", os.environ["RG"],
               "--image", os.environ["IMAGE"],
-              "--registry-server", os.environ["REG_SERVER"],
-              "--registry-username", os.environ["REG_USER"],
-              "--registry-password", os.environ["REG_PASS"],
           ]
           result = subprocess.run(cmd)
           sys.exit(result.returncode)
