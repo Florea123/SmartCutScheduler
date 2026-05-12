@@ -114,7 +114,7 @@ async def analyze_haircut(
                 detail=f"Could not fetch reference photo from backend: HTTP {exc.response.status_code}",
             ) from exc
         except Exception as exc:
-            logger.error("Failed to fetch reference photo: %s", exc)
+            logger.exception("Failed to fetch reference photo: %s", exc)
             raise HTTPException(
                 status_code=502,
                 detail="Could not retrieve the reference photo. Please try again.",

@@ -280,10 +280,10 @@ async def analyze_hair(
         )
         return result
     except json.JSONDecodeError as exc:
-        logger.error("Gemini returned invalid JSON for hair analysis: %s", exc)
+        logger.exception("Gemini returned invalid JSON for hair analysis: %s", exc)
         return _fallback_response("AI returned an unexpected response — please try again.")
     except Exception as exc:
-        logger.error("Hair analysis failed: %s", exc)
+        logger.exception("Hair analysis failed: %s", exc)
         exc_str = str(exc)
         if any(code in exc_str for code in ("503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED")):
             return {
