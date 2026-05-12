@@ -29,4 +29,7 @@ COPY --from=build /app/publish .
 ENV ASPNETCORE_URLS=http://+:5000
 EXPOSE 5000
 
+RUN addgroup --system appuser && adduser --system --ingroup appuser appuser
+USER appuser
+
 ENTRYPOINT ["dotnet", "SmartCutScheduler.Api.dll"]
