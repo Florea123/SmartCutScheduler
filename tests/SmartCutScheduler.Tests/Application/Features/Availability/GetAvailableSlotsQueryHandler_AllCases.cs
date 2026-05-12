@@ -32,7 +32,7 @@ public class GetAvailableSlotsQueryHandler_AllCases
         var barberRepoMock = new Mock<IBarberRepository>();
         barberRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(barber);
         var serviceRepoMock = new Mock<IServiceRepository>();
-        serviceRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Service)null);
+        serviceRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Service?)null);
         var appointmentRepoMock = new Mock<IAppointmentRepository>();
         var handler = new GetAvailableSlotsQueryHandler(barberRepoMock.Object, serviceRepoMock.Object, appointmentRepoMock.Object);
         var query = new GetAvailableSlotsQuery(Guid.NewGuid(), Guid.NewGuid(), DateTime.Today);

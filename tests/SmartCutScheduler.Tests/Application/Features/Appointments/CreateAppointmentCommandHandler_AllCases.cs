@@ -60,7 +60,7 @@ public class CreateAppointmentCommandHandler_AllCases
         var unitOfWorkMock = new Mock<IUnitOfWork>();
         var barber = new Barber { IsActive = true, BarberServices = new List<BarberService>() };
         unitOfWorkMock.Setup(u => u.Barbers.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(barber);
-        unitOfWorkMock.Setup(u => u.Services.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Service)null);
+        unitOfWorkMock.Setup(u => u.Services.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Service?)null);
         var httpContext = new DefaultHttpContext();
         httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()) }, "mock"));
         var httpContextAccessorMock = new Mock<IHttpContextAccessor>();

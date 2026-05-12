@@ -56,7 +56,7 @@ public class PasswordService_AllCases
         var service = new PasswordService(hasher);
         var user = new User { Name = "Test" };
         var hash = service.Hash(user, "password");
-        Action act = () => service.Verify(user, hash, null);
+        Action act = () => service.Verify(user, hash, null!);
         act.Should().Throw<ArgumentNullException>();
     }
 

@@ -27,7 +27,7 @@ public class AddServiceCommandHandler_AllCases
         var unitOfWorkMock = new Mock<IUnitOfWork>();
         var barber = new Barber { BarberServices = new List<BarberService>() };
         unitOfWorkMock.Setup(u => u.Barbers.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(barber);
-        unitOfWorkMock.Setup(u => u.Services.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Service)null);
+        unitOfWorkMock.Setup(u => u.Services.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Service?)null);
         var handler = new AddServiceCommandHandler(unitOfWorkMock.Object);
         var command = new AddServiceCommand(Guid.NewGuid(), Guid.NewGuid(), null);
         await Assert.ThrowsAsync<InvalidOperationException>(() => handler.Handle(command, CancellationToken.None));
