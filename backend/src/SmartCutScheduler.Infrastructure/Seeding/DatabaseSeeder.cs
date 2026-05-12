@@ -17,6 +17,7 @@ public static class DatabaseSeeder
         var demoProfilePic = "profile-images/1e1b0dde-0e2f-4391-a711-673cf678ac1c.jpg";
 
         // Seed Users
+#pragma warning disable S2068 // These are demo seed credentials, not real passwords
         var users = new List<User>
         {
             new()
@@ -24,7 +25,7 @@ public static class DatabaseSeeder
                 Id = Guid.NewGuid(),
                 Name = "Andrei Pop",
                 Email = "andrei.pop@demo.com",
-                PasswordHash = "demo", // NOSONAR - demo seed data, not a real credential
+                PasswordHash = "demo",
                 Role = UserRole.Customer,
                 PhoneNumber = "+40740000001",
                 ProfilePictureUrl = demoProfilePic,
@@ -36,7 +37,7 @@ public static class DatabaseSeeder
                 Id = Guid.NewGuid(),
                 Name = "Maria Ionescu",
                 Email = "maria.ionescu@demo.com",
-                PasswordHash = "demo", // NOSONAR - demo seed data, not a real credential
+                PasswordHash = "demo",
                 Role = UserRole.Customer,
                 PhoneNumber = "+40740000002",
                 ProfilePictureUrl = demoProfilePic,
@@ -48,7 +49,7 @@ public static class DatabaseSeeder
                 Id = Guid.NewGuid(),
                 Name = "Vlad Admin",
                 Email = "admin@demo.com",
-                PasswordHash = "demo", // NOSONAR - demo seed data, not a real credential
+                PasswordHash = "demo",
                 Role = UserRole.Admin,
                 PhoneNumber = "+40740000003",
                 ProfilePictureUrl = demoProfilePic,
@@ -56,6 +57,7 @@ public static class DatabaseSeeder
                 UpdatedAtUtc = DateTime.UtcNow
             }
         };
+#pragma warning restore S2068
         await db.Users.AddRangeAsync(users);
         await db.SaveChangesAsync();
 
@@ -230,6 +232,7 @@ public static class DatabaseSeeder
         // Seed Work Schedules (all barbers work Mon-Sat, 8:00-18:00)
         var workSchedules = new List<WorkSchedule>();
 
+#pragma warning disable S3267 // Loop cannot be simplified with SelectMany due to compound logic (Mon-Sat + Sunday special case)
         foreach (var barber in barbers)
         {
             for (int day = 1; day <= 6; day++) // Monday to Saturday
@@ -256,6 +259,7 @@ public static class DatabaseSeeder
                 IsWorkingDay = false
             });
         }
+#pragma warning restore S3267
 
         await db.WorkSchedules.AddRangeAsync(workSchedules);
         await db.SaveChangesAsync();
