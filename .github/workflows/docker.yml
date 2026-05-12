@@ -1,8 +1,7 @@
 name: CD – Docker Build & Push
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch: # disabled – replaced by deploy.yml which pushes to ACR
 
 env:
   REGISTRY: ghcr.io
