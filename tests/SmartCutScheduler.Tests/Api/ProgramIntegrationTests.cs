@@ -13,7 +13,6 @@ using Xunit;
 
 using Microsoft.EntityFrameworkCore;
 using SmartCutScheduler.Infrastructure.Persistence;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace SmartCutScheduler.Tests.Api
 {

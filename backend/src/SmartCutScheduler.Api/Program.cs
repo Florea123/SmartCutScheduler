@@ -222,4 +222,4 @@ app.MapHealthChecks("/health");
 
 await app.RunAsync();
 
-public static partial class Program { } // For testing
+public partial class Program { } // For testing - required by WebApplicationFactory<Program>
