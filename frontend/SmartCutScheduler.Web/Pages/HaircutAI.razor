@@ -503,7 +503,14 @@
     {
         if (firstRender)
         {
-            _cameraSupported = await JS.InvokeAsync<bool>("SmartCutCamera.isCameraSupported");
+            try
+            {
+                _cameraSupported = await JS.InvokeAsync<bool>("SmartCutCamera.isCameraSupported");
+            }
+            catch
+            {
+                _cameraSupported = false;
+            }
             StateHasChanged();
         }
     }

@@ -110,8 +110,8 @@ jobs:
               "SeedAdmin__Name=Admin",
               "Stripe__SecretKey=" + os.environ["STRIPE_KEY"],
               "Stripe__WebhookSecret=" + os.environ["STRIPE_WH"],
-              "Stripe__SuccessUrl=" + os.environ["FRONTEND"] + "/",
-              "Stripe__CancelUrl=" + os.environ["FRONTEND"] + "/",
+              "Stripe__SuccessUrl=" + os.environ["FRONTEND"] + "/SmartCutScheduler/",
+              "Stripe__CancelUrl=" + os.environ["FRONTEND"] + "/SmartCutScheduler/",
               "AzureStorage__ConnectionString=" + os.environ["STORAGE_CONN"],
               "AzureStorage__ProfileImagesContainer=profile-images",
               "AzureStorage__FreshHaircutPhotosContainer=fresh-haircut-photos",
@@ -151,7 +151,7 @@ jobs:
               "GOOGLE_CLIENT_ID=" + os.environ["G_CLIENT_ID"],
               "GOOGLE_CLIENT_SECRET=" + os.environ["G_CLIENT_SECRET"],
               "GOOGLE_REDIRECT_URI=" + os.environ["AI_SVC_URL"] + "/calendar/callback",
-              "CORS_ORIGINS=" + os.environ["FRONTEND"],
+              "CORS_ORIGINS=" + os.environ["FRONTEND"] + "," + os.environ["FRONTEND"] + "/SmartCutScheduler",
           ]
           cmd = [
               "az", "containerapp", "update",
