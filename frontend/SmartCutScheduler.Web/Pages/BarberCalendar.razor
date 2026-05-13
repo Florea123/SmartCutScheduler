@@ -405,10 +405,10 @@
         var slotDate = _selectedDate?.Date ?? DateTime.Today;
         var slotTime = DateTime.Parse(slot.Time).TimeOfDay;
         var fullDate = slotDate.Add(slotTime);
-        var appointmentUrl = $"/appointment/new?barberId={BarberId}&date={Uri.EscapeDataString(fullDate.ToString("o"))}";
+        var appointmentUrl = $"appointment/new?barberId={BarberId}&date={Uri.EscapeDataString(fullDate.ToString("o"))}";
         if (!authState.User.Identity?.IsAuthenticated ?? true)
         {
-            Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(appointmentUrl)}");
+            Navigation.NavigateTo($"login?returnUrl={Uri.EscapeDataString(appointmentUrl)}");
             return;
         }
         Navigation.NavigateTo(appointmentUrl);
@@ -426,7 +426,7 @@
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         if (!authState.User.Identity?.IsAuthenticated ?? true)
         {
-            Navigation.NavigateTo($"/login?returnUrl=/barber/{BarberId}");
+            Navigation.NavigateTo($"login?returnUrl=barber/{BarberId}");
             return;
         }
 
@@ -434,7 +434,7 @@
             return;
 
         var dateParam = _selectedSlot.Value.ToString("o");
-        Navigation.NavigateTo($"/appointment/new?barberId={BarberId}&date={Uri.EscapeDataString(dateParam)}&serviceId={_selectedServiceId}");
+        Navigation.NavigateTo($"appointment/new?barberId={BarberId}&date={Uri.EscapeDataString(dateParam)}&serviceId={_selectedServiceId}");
         _showServiceDialog = false;
     }
 }

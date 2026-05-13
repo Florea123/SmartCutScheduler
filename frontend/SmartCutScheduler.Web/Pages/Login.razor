@@ -126,7 +126,7 @@
         try
         {
             var result = await AuthService.LoginAsync(_loginModel);
-            if (result != null) Navigation.NavigateTo(ReturnUrl ?? "/");
+            if (result != null) Navigation.NavigateTo(ReturnUrl ?? Navigation.BaseUri);
             else _loginError = "Email sau parola incorecta.";
         }
         catch (Exception ex) { _loginError = $"Eroare: {ex.Message}"; }
@@ -146,7 +146,7 @@
         try
         {
             var result = await AuthService.RegisterAsync(_registerModel);
-            if (result != null) Navigation.NavigateTo(ReturnUrl ?? "/");
+            if (result != null) Navigation.NavigateTo(ReturnUrl ?? Navigation.BaseUri);
             else _registerError = "Inregistrarea a esuat. Te rugam sa verifici datele introduse.";
         }
         catch (Exception ex) { _registerError = $"Eroare: {ex.Message}"; }

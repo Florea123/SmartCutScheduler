@@ -424,7 +424,7 @@
                                     <MudButton Variant="Variant.Filled"
                                                Style="background:#F5A623; color:#000; font-weight:700; border-radius:50px; min-width:240px;"
                                                StartIcon="@Icons.Material.Filled.CalendarMonth"
-                                               OnClick='@(() => Navigation.NavigateTo($"/barber/{_recommendation.recommended_slot.barberId}"))'>
+                                               OnClick='@(() => Navigation.NavigateTo($"barber/{_recommendation.recommended_slot.barberId}"))'>
                                         Programează-te la @_recommendation.recommended_slot.barber
                                     </MudButton>
                                 </MudStack>
@@ -444,7 +444,7 @@
                             <MudButton Variant="Variant.Text"
                                        Style="color:#8fa3ba;"
                                        StartIcon="@Icons.Material.Filled.CalendarMonth"
-                                       OnClick='@(() => Navigation.NavigateTo("/"))'>
+                                       OnClick='@(() => Navigation.NavigateTo(Navigation.BaseUri))'>
                                 Vezi toți frizerii
                             </MudButton>
                         </MudStack>

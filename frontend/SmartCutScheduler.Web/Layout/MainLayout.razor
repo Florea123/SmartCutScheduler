@@ -124,7 +124,7 @@
                 <MudButton Variant="Variant.Outlined" Style="border-color:#2a4a6a; color:#8fa3ba; font-size:0.8rem;" Size="Size.Small" OnClick="HandleLogoutAsync">Logout</MudButton>
             </Authorized>
             <NotAuthorized>
-                <MudButton Href="/login" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" Style="font-weight:700; color:#000;">Login</MudButton>
+                <MudButton Href="login" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" Style="font-weight:700; color:#000;">Login</MudButton>
             </NotAuthorized>
         </AuthorizeView>
     </MudAppBar>
@@ -134,19 +134,19 @@
             <MudText Style="font-size:0.75rem; font-weight:700; color:#F5A623; letter-spacing:2px; text-transform:uppercase;">Navigare</MudText>
         </div>
         <MudNavMenu>
-            <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home" IconColor="Color.Inherit">Acasa</MudNavLink>
+            <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home" IconColor="Color.Inherit">Acasa</MudNavLink>
             <AuthorizeView>
                 <Authorized Context="authNav">
                     <AuthorizeView Roles="Admin">
-                        <MudNavLink Href="/admin" Icon="@Icons.Material.Filled.AdminPanelSettings" IconColor="Color.Inherit">Admin Panel</MudNavLink>
+                        <MudNavLink Href="admin" Icon="@Icons.Material.Filled.AdminPanelSettings" IconColor="Color.Inherit">Admin Panel</MudNavLink>
                     </AuthorizeView>
                     <AuthorizeView Roles="Barber">
-                        <MudNavLink Href="/barber-services" Icon="@Icons.Material.Filled.ContentCut" IconColor="Color.Inherit">Serviciile Mele</MudNavLink>
-                        <MudNavLink Href="/barber-appointments" Icon="@Icons.Material.Filled.CalendarMonth" IconColor="Color.Inherit">Programarile la mine</MudNavLink>
+                        <MudNavLink Href="barber-services" Icon="@Icons.Material.Filled.ContentCut" IconColor="Color.Inherit">Serviciile Mele</MudNavLink>
+                        <MudNavLink Href="barber-appointments" Icon="@Icons.Material.Filled.CalendarMonth" IconColor="Color.Inherit">Programarile la mine</MudNavLink>
                     </AuthorizeView>
                     <AuthorizeView Roles="Customer">
-                        <MudNavLink Href="/appointments" Icon="@Icons.Material.Filled.CalendarMonth" IconColor="Color.Inherit">Programarile Mele</MudNavLink>
-                        <MudNavLink Href="/haircut-ai" Icon="@Icons.Material.Filled.AutoAwesome" IconColor="Color.Inherit">AI Hair Check</MudNavLink>
+                        <MudNavLink Href="appointments" Icon="@Icons.Material.Filled.CalendarMonth" IconColor="Color.Inherit">Programarile Mele</MudNavLink>
+                        <MudNavLink Href="haircut-ai" Icon="@Icons.Material.Filled.AutoAwesome" IconColor="Color.Inherit">AI Hair Check</MudNavLink>
                     </AuthorizeView>
                 </Authorized>
             </AuthorizeView>
@@ -411,7 +411,7 @@
         var time = _selectedNotification.SlotTime;
         CloseDetail();
         // Navigate to barber calendar with pre-selected date
-        Navigation.NavigateTo($"/barber/{barberId}?preDate={date}&preTime={time}");
+        Navigation.NavigateTo($"barber/{barberId}?preDate={date}&preTime={time}");
     }
 
     private async Task LoadUserAsync()
@@ -489,8 +489,8 @@
     private async Task HandleLogoutAsync()
     {
         await AuthService.LogoutAsync();
-        Navigation.NavigateTo("/");
+        Navigation.NavigateTo(Navigation.BaseUri);
     }
 
-    private void GoToSettings() => Navigation.NavigateTo("/settings");
+    private void GoToSettings() => Navigation.NavigateTo("settings");
 }
