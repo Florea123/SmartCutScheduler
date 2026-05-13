@@ -68,8 +68,9 @@ dist/
 ## User-uploaded files (runtime data, not source)
 **/wwwroot/fresh-haircut-photos/
 
-## Generated/copied JS at runtime
+## Generated/copied JS at runtime (exclude handwritten source files)
 **/wwwroot/js/
+!**/wwwroot/js/camera.js
 
 ## Temp test output
 test_output.txt
